@@ -6,6 +6,10 @@ __pycache__/
 # C extensions
 *.so
 
+# data
+data/*
+Stef-scripts/*
+
 # Distribution / packaging
 .Python
 build/
