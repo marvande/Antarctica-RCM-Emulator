@@ -10,7 +10,10 @@ from datetime import datetime
 from datetime import timedelta
 import rasterio
 import cartopy.crs as ccrs
+
 from process_pangeo import *
+from processRCM import *
+from GC_scripts import *
 
 import pyproj
 from pyproj import Transformer
@@ -41,14 +44,15 @@ def printShape(var, dim1, dim2, dim3, ds = 'GCM'):
                                                                  var.shape[1],
                                                                  var.shape[2], dim1, dim2, dim3, ds))
 
-def create_downs_RCMgrid(pathRCM):
+def create_downs_RCMgrid():
     # Load RCM for one variable (geographical coordinates are of importance not time or var)
-    var = 'CC'
-    path_RCM_decades= pathRCM+f'{var}_zarr/'
-    path_RCM_var = path_RCM_decades+f'{var}_decade_1.zarr'
-    dsr = xr.open_zarr('gs://'+path_RCM_var, decode_times=True)
+    
+    VAR = 'CC'
+    pathGC, fileGC = pathToFiles(VAR, date1='19800101', date2='19801231')
+    downloadFileFromGC(pathGC, '', fileGC)
+    dsr = BasicPreprocRCM(ProcessRCMVar(VAR, xr.open_dataset(fileGC)), kmToM = False)
+    
     CC = dsr.CC
-    CC = CC.rename({'X':'x', 'Y':'y','TIME':'time'})
     
     # Get boundaries of RCM grid
     x_lower, x_upper = CC.x.min().data, CC.x.max().data
