@@ -58,11 +58,27 @@ def ProcessRCMVar(var, RCM):
         RCM = RCM.drop_dims(['ATMLAY'])
         RCM = RCM.drop(['TIME_bnds'])
         return RCM
+    """
     if var == 'UUP':
         RCM = RCM.isel(PLEV=0).drop(['TIME_bnds','PLEV_bnds'])
         return RCM
     if var == 'VVP':
         RCM = RCM.isel(PLEV=0).drop(['TIME_bnds','PLEV_bnds'])
+        return RCM"""
+    if var == 'UUP':
+        RCM = RCM.drop(['TIME_bnds','PLEV_bnds'])
+        return RCM
+    if var == 'VVP':
+        RCM = RCM.drop(['TIME_bnds','PLEV_bnds'])
+        return RCM
+    if var == 'SMB':
+        # drop SECTOR coordinate as singular
+        dim = ('TIME', 'Y', 'X')
+        RCM['SMB'] = xr.Variable(dims = dim, 
+                                    data = RCM.SMB.mean(dim='SECTOR'), 
+                                    attrs = RCM.SMB.attrs)
+        RCM = RCM.drop_dims(['SECTOR'])
+        RCM = RCM.drop(['TIME_bnds'])
         return RCM
     else:
         return RCM.drop(['TIME_bnds'])

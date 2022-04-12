@@ -1,6 +1,6 @@
 from google.cloud import storage
 from re import search
-
+from tqdm import tqdm
 
 # Google cloud info
 PROJECT = 'ee-iceshelf-gee4geo'
