@@ -1,6 +1,8 @@
 from google.cloud import storage
 from re import search
 from tqdm import tqdm
+from os import listdir
+from os.path import isfile, join
 
 # Google cloud info
 PROJECT = 'ee-iceshelf-gee4geo'
@@ -53,3 +55,22 @@ def pathToFiles(VAR, date1='19800101', date2='19801231'):
     pathGC = f'Chris_data/RawData/MAR-ACCESS1.3/{VAR}/'
     fileGC = f'{VAR}_ant-35km_ACCESS1.3_rcp8.5_r1i1p1_ULg-MAR311_v1_day_{date1}-{date2}.nc'
     return pathGC, fileGC
+
+def filesInDir(pathLocal):
+    return sorted([f for f in listdir(pathLocal) if isfile(join(pathLocal, f))])
+
+def empty_dir(pathLocal):
+  # delete all files as precaution
+  for file_name in os.listdir(pathLocal):
+    # construct full file path
+    file = pathLocal + file_name
+    if os.path.isfile(file):
+        os.remove(file)
+        
+def filesInDirWithVar(pathLocal, VAR):
+    files = filesInDir(pathLocal)
+    filesWithVar = []
+    for f in files:
+        if search(f'{VAR}_', f):
+            filesWithVar.append(f)
+    return filesWithVar
