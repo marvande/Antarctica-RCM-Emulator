@@ -36,8 +36,8 @@ def SpatialStdMean(DATASET):
     y =  DATASET.dims['y']
     numVar = len(list(DATASET.data_vars))
 
-    SpatialMean = SpatialMean.to_dataframe().drop(['spatial_ref','PLEV'], axis = 1).values
-    SpatialSTD = SpatialSTD.to_dataframe().drop(['spatial_ref','PLEV'], axis = 1).values
+    SpatialMean = SpatialMean.to_dataframe().drop(['spatial_ref'], axis = 1).values
+    SpatialSTD = SpatialSTD.to_dataframe().drop(['spatial_ref'], axis = 1).values
     
     SpatialMean = np.array(SpatialMean).reshape(time,1,1,numVar)
     SpatialSTD = np.array(SpatialSTD).reshape(time,1,1,numVar)
@@ -55,16 +55,13 @@ def cosSinEncoding(DATASET):
     
     return cosvect, sinvect
 
-def create1DInput(DATASET, 
+def create1DInput(INPUT2D, 
                   seas, # put a cos,sin vector to control the season, format : bool
                   means,   # add the mean of the variables raw or stdz, format : r,s,n
                   stds):    # add the std of the variables raw or stdz, format : r,s,n                   
                  
     INPUT_1D = []
     
-    # Remove target variable from DATASET:
-    DATASET = DATASET.drop('SMB')
-
     # Create spatial and temporal mean and append to 1D input:
     # for now only one format
     if means and stds:
@@ -94,13 +91,8 @@ def standardize(data):
     ndata = (data - mean)/sd
     return (ndata)
 
-# Read GCM like RCM:
-
-fileGC = 'MAR(ACCESS1-3)-stereographic_monthly_GCM_like.nc'
-pathGC = f'Chris_data/RawData/MAR-ACCESS1.3/monthly/'
-
 def create2DInput(DATASET,
-                  stand):              
+                  stand, size_input_domain):              
     ''' 
         MAKE THE 2D INPUT ARRAY
         SHAPE [nbmonths, x, y, nb_vars]
@@ -118,7 +110,14 @@ def create2DInput(DATASET,
     print(f'Number of variables: {nb_vars}')
     print(f'Variables: {var_list}')
     
-    INPUT_2D=np.transpose(np.asarray([DATASET[i].values for i in var_list]),[1,3,2,0])
+    if size_input_domain == 8:
+            lon_b,lon_e,lat_b,lat_e = 44,52,12,20
+    elif size_input_domain == 16:
+            lon_b,lon_e,lat_b,lat_e = 39,55,9,25
+    elif size_input_domain == 32:
+            lon_b,lon_e,lat_b,lat_e = 34,66,4,36
+    
+    INPUT_2D=np.transpose(np.asarray([DATASET[i].values[:,lat_b:lat_e,lon_b:lon_e] for i in var_list]),[1,3,2,0])
 
     print(f'Dataset shape: {DATASET.dims}')
     
@@ -137,6 +136,7 @@ def create2DInput(DATASET,
 
 def input_maker(fileGC,
                 pathGC, 
+                size_input_domain = 16, # size of domain, format: 8,16,32, must be define in advance 
                 stand = True,  # standardization   
                 seas = True,   # put a cos,sin vector to control the season, format : bool
                 means = True,   # add the mean of the variables raw or stdz, format : r,s,n
@@ -151,7 +151,7 @@ def input_maker(fileGC,
         SHAPE [nbmonths, x, y, nb_vars]
     '''
     print('Creating 2D input X:\n -------------------')
-    INPUT_2D_ARRAY = create2DInput(DATASET, stand)
+    INPUT_2D_ARRAY = create2DInput(DATASET, stand, size_input_domain)
     
     '''
     MAKE THE 1D INPUT ARRAY
