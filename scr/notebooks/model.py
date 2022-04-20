@@ -84,7 +84,6 @@ def unet_maker(nb_inputs,size_target_domain,shape_inputs, filters = 64, seed=123
     inputs_list=[]
     
     size= np.min([highestPowerof2(shape_inputs[0][0]),highestPowerof2(shape_inputs[0][1])])
-    
     print('Arguments to U-Net:\n------------------')
     print('Nb inputs:', nb_inputs)
     print('Size target domain:', size_target_domain)

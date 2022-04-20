@@ -44,7 +44,7 @@ def printShape(var, dim1, dim2, dim3, ds = 'GCM'):
                                                                  var.shape[1],
                                                                  var.shape[2], dim1, dim2, dim3, ds))
 
-def create_downs_RCMgrid():
+def create_downs_RCMgrid(grid=False, resx = 32, resy = 32):
     # Load RCM for one variable (geographical coordinates are of importance not time or var)
     
     VAR = 'CC'
@@ -80,8 +80,12 @@ def create_downs_RCMgrid():
     
     print('Cut so that on original x,y bounds:\n--------------------------')
     # Restrict new upsampled grid so that it lies in the original max and min bounds
-    cut_X = CC.x[(CC.x<=x_upper)&(CC.x>=x_lower)]
-    cut_Y = CC.y[(CC.y<=y_upper)&(CC.y>=y_lower)]
+    if grid:
+        x_lower, x_upper = -(resx/2)*x_res_new, (resx/2)*x_res_new
+        y_lower, y_upper = -(resy/2)*y_res_new, (resy/2)*y_res_new
+        
+    cut_X = CC.x[(CC.x<=x_upper)&(CC.x>x_lower)]
+    cut_Y = CC.y[(CC.y<=y_upper)&(CC.y>y_lower)]
 
     printMaxMin_XY(cut_X, cut_Y, unit = 'km')
     
