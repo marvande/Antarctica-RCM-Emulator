@@ -93,10 +93,10 @@ def plotTarget(target_dataset, sampletarget, ax, vmin, vmax, region="Whole antar
                           cmap='RdYlBu_r', vmin = vmin, vmax = vmax)
     ax.coastlines("10m", color="black")
     ax.gridlines()
-    ax.set_title(f"Target: SMB")
+    ax.set_title(f"Target: SMB, {region}")
 
 
-def plotPred(target_dataset, samplepred, ax, vmin, vmax, region="whole antarctica"):
+def plotPred(target_dataset, samplepred, ax, vmin, vmax, region="Whole antarctica"):
     if region != "Whole antarctica":
         ds = createLowerTarget(target_dataset, region = region, Nx=64, Ny = 64, print_=False)
     else:
@@ -110,7 +110,7 @@ def plotPred(target_dataset, samplepred, ax, vmin, vmax, region="whole antarctic
                           cmap='RdYlBu_r', vmin = vmin, vmax = vmax)
     ax.coastlines("10m", color="black")
     ax.gridlines()
-    ax.set_title(f"Prediction: SMB")
+    ax.set_title(f"Prediction: SMB, {region}")
     
     
 def createLowerTarget(target_dataset, region, Nx=64, Ny = 64, print_=True):
