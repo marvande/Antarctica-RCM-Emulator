@@ -1,4 +1,6 @@
 import tensorflow as tf 
+import xarray as xr
+import cartopy.crs as ccrs
 
 def plotAllVar(GCM_xy, m=3, n=3, name="GCM", time=0):
     vars_ = list(GCM_xy.data_vars)
@@ -112,26 +114,44 @@ def plotPred(target_dataset, samplepred, ax, vmin, vmax, region="whole antarctic
     
     
 def createLowerTarget(target_dataset, region, Nx=64, Ny = 64, print_=True):
+    max_y = Nx * 35 * 1000
+    max_x = Ny * 35 * 1000
+    
+    min_x_res = target_dataset.x.min().values
+    min_y_res = target_dataset.y.min().values
+    
+    max_x_res = target_dataset.x.max().values
+    max_y_res = target_dataset.y.max().values
+    
     if region == 'Larsen':
-        max_y = Nx * 35 * 1000
-        max_x = Ny * 35 * 1000
-        min_x = target_dataset.x.min().values
-
         df = target_dataset.where(target_dataset.y>=0, drop = True)
         df = df.where(df.y < max_y, drop = True)
-        df = df.where(df.x < min_x+max_x, drop=True)
-    
+        df = df.where(df.x < min_x_res+max_x, drop=True)
+        
     if region == 'Lower peninsula':
         max_x = (Nx / 2) * 35 * 1000
         max_y = Ny * 35 * 1000
         df = cutBoundaries(target_dataset, max_x, max_y, lowerHalf=True)
-    
+        
+    if region == 'Amundsen':
+        df = target_dataset.where(target_dataset.y<=min_y_res+1.5*max_y, drop = True)
+        df = df.where(df.y>min_y_res+0.5*max_y, drop = True)
+        df = df.where(df.x < min_x_res+max_x, drop=True)
+        
+    if region == 'Wilkes':
+        df = target_dataset.where(target_dataset.x>max_x_res-max_x, drop = True)
+        df = df.where(df.y<=min_y_res+1.5*max_y, drop = True)
+        df = df.where(df.y>min_y_res+0.5*max_y, drop = True)  
+        
+    if region == 'Maud':
+        df = target_dataset.where(target_dataset.y>max_y_res-max_y, drop = True)
+        df = df.where(df.x>=max_x_res-1.5*max_x, drop = True)
+        df = df.where(df.x<max_x_res-0.5*max_x, drop = True)  
     if print_:
         print("New target dimensions:", df.dims)
     return df
 
 def createLowerInput(GCMLike, region, Nx=48, Ny=25, print_=True):
-    
     if region == 'Lower peninsula':
         max_x = (Nx/2) * 68 * 1000
         max_y = (Ny) * 206 * 1000
@@ -142,9 +162,57 @@ def createLowerInput(GCMLike, region, Nx=48, Ny=25, print_=True):
     if region == 'Larsen':
         min_x = GCMLike.x.min().values
         df = GCMLike.where(GCMLike.x < min_x+ (Nx * 68 * 1000), drop=True)
+        
+    if region == 'Amundsen': # same region as Larsen
+        min_x = GCMLike.x.min().values
+        df = GCMLike.where(GCMLike.x < min_x+ (Nx * 68 * 1000), drop=True)
+    
+    if region == 'Wilkes': # same region as Larsen
+        max_x = GCMLike.x.max().values
+        df = GCMLike.where(GCMLike.x > max_x- (Nx * 68 * 1000), drop=True)
+    
+    if region == 'Maud': # same region as lower peninsula
+        max_x = (Nx/2) * 68 * 1000
+        max_y = (Ny) * 206 * 1000
+    
+        df = GCMLike.where(GCMLike.x < max_x, drop=True)
+        df = df.where(-max_x <= df.x, drop=True)
+    
     if print_:
         print("New dimensions:", df.dims)
+        
+    return df
 
+def createLowerInput(GCMLike, region, Nx=48, Ny=25, print_=True):
+    if region == 'Lower peninsula':
+        max_x = (Nx/2) * 68 * 1000
+        max_y = (Ny) * 206 * 1000
+        
+        df = GCMLike.where(GCMLike.x < max_x, drop=True)
+        df = df.where(-max_x <= df.x, drop=True)
+        
+    if region == 'Larsen':
+        min_x = GCMLike.x.min().values
+        df = GCMLike.where(GCMLike.x < min_x+ (Nx * 68 * 1000), drop=True)
+        
+    if region == 'Amundsen': # same region as Larsen
+        min_x = GCMLike.x.min().values
+        df = GCMLike.where(GCMLike.x < min_x+ (Nx * 68 * 1000), drop=True)
+    
+    if region == 'Wilkes': # same region as Larsen
+        max_x = GCMLike.x.max().values
+        df = GCMLike.where(GCMLike.x > max_x- (Nx * 68 * 1000), drop=True)
+    
+    if region == 'Maud': # same region as lower peninsula
+        max_x = (Nx/2) * 68 * 1000
+        max_y = (Ny) * 206 * 1000
+    
+        df = GCMLike.where(GCMLike.x < max_x, drop=True)
+        df = df.where(-max_x <= df.x, drop=True)
+    
+    if print_:
+        print("New dimensions:", df.dims)
+        
     return df
 
 def standardize(data):
