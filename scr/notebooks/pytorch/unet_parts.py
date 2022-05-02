@@ -118,7 +118,7 @@ class LinearUpsamplingZ(nn.Module):
 	def __init__(self, in_channels=16, out_channels=1024):
 		super(LinearUpsamplingZ, self).__init__()
 		self.linearUp = nn.Sequential(
-				nn.Linear(16, 128), 
+				nn.Linear(in_channels, 128), 
 				nn.Linear(128, 256),
 				nn.Linear(256, 512),
 				nn.Linear(512, 1024)

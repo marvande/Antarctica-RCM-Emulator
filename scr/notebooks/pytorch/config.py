@@ -12,8 +12,10 @@ fileGCMLike = 'MAR(ACCESS1-3)-stereographic_monthly_GCM_like.nc'
 
 # Choose either on of the regions below, or Combined
 # which will use all of them
-REGION ="Combined"
+REGION ="Larsen"
 REGIONS = ['Larsen', 'Wilkes', 'Maud', 'Amundsen']
+
+SIZE_INPUT_DOMAIN = 32
 
 # Training param
 BATCH_SIZE = 32

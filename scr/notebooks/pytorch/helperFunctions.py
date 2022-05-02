@@ -1,6 +1,9 @@
 import tensorflow as tf 
 import xarray as xr
 import cartopy.crs as ccrs
+from scipy.stats import wasserstein_distance
+import torch
+import numpy as np 
 
 def plotAllVar(GCM_xy, m=3, n=3, name="GCM", time=0):
     vars_ = list(GCM_xy.data_vars)
@@ -111,6 +114,39 @@ def plotPred(target_dataset, samplepred, ax, vmin, vmax, region="Whole antarctic
     ax.coastlines("10m", color="black")
     ax.gridlines()
     ax.set_title(f"Prediction: SMB, {region}")
+
+
+def plotPearsonCorr(target_dataset, samplepred, ax, vmin, vmax, region="Whole antarctica"):
+    if region != "Whole antarctica":
+        ds = createLowerTarget(target_dataset, region = region, Nx=64, Ny = 64, print_=False)
+    else:
+        ds = target_dataset
+    coords = {"y": ds.coords["y"], "x": ds.coords["x"]}
+    dftrain = xr.Dataset(coords=coords, attrs=ds.attrs)
+    dftrain["Correlation"] = xr.Variable(
+        dims=("y", "x"), data=samplepred[:, :, 0]
+    )
+    dftrain.Correlation.plot(ax=ax, x="x", transform=ccrs.SouthPolarStereo(), add_colorbar=True, 
+                          cmap='RdYlBu_r', vmin = vmin, vmax = vmax)
+    ax.coastlines("10m", color="black")
+    ax.gridlines()
+    ax.set_title(f"Pearson correlation between prediction and target, {region}")
+    
+def plotWasserstein(target_dataset, samplepred, ax, vmin, vmax, region="Whole antarctica"):
+    if region != "Whole antarctica":
+        ds = createLowerTarget(target_dataset, region = region, Nx=64, Ny = 64, print_=False)
+    else:
+        ds = target_dataset
+    coords = {"y": ds.coords["y"], "x": ds.coords["x"]}
+    dftrain = xr.Dataset(coords=coords, attrs=ds.attrs)
+    dftrain["Wasserstein"] = xr.Variable(
+        dims=("y", "x"), data=samplepred[:, :, 0]
+    )
+    dftrain.Wasserstein.plot(ax=ax, x="x", transform=ccrs.SouthPolarStereo(), add_colorbar=True, 
+                          cmap='RdYlBu_r', vmin = vmin, vmax = vmax)
+    ax.coastlines("10m", color="black")
+    ax.gridlines()
+    ax.set_title(f"Wasserstein distance between prediction and target, {region}")
     
     
 def createLowerTarget(target_dataset, region, Nx=64, Ny = 64, print_=True):
@@ -231,3 +267,32 @@ def highestPowerof2(n):
             res = i;
             break;
     return res;
+
+
+def calculatePearson(preds,true_smb):
+  predictions = torch.tensor(preds)
+  target = torch.tensor(true_smb)
+
+  PearsonCorr = np.empty((predictions.shape[1], predictions.shape[2],1))
+  for i in range(predictions.shape[1]): #x
+    for j in range(predictions.shape[2]): #y
+      pixelPred = predictions[:,i,j,0].numpy()
+      pixelTarg = target[:,i,j,0].numpy()
+      PearsonCorr[i,j] = np.corrcoef(pixelPred,pixelTarg)[0,1]
+
+  # Fill NaN with 0 (uncorrelated)
+  PearsonCorr = np.nan_to_num(PearsonCorr)
+  return PearsonCorr
+
+def calculateWasserstein(preds,true_smb):
+  predictions = torch.tensor(preds)
+  target = torch.tensor(true_smb)
+
+  Wasserstein = np.empty((predictions.shape[1], predictions.shape[2],1))
+  for i in range(predictions.shape[1]): #x
+    for j in range(predictions.shape[2]): #y
+      pixelPred = predictions[:,i,j,0].numpy()
+      pixelTarg = target[:,i,j,0].numpy()
+      Wasserstein[i,j] = wasserstein_distance(pixelPred,pixelTarg)
+
+  return Wasserstein  
