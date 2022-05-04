@@ -22,8 +22,9 @@ import numpy as np
 from google.colab import files
 
 from GC_scripts import * # Google cloud scripts
-from helperFunctions import *
-
+from dataFunctions import *
+from unet import *
+from makeInputs import *
 
 def train_net(
 	net,
@@ -230,7 +231,7 @@ def predict(net, device, test_loader, model,
 	logging.info(f"Using device {device}")
 	
 	net.to(device=device)
-	net.load_state_dict(torch.load(str(dir_checkpoint / model), map_location=device))
+	net.load_state_dict(torch.load(str(model), map_location=device))
 	logging.info("Saved model loaded!")
 	
 	preds = []
@@ -263,7 +264,14 @@ def predict(net, device, test_loader, model,
 	return preds, x, z, y, r
 
 
-def plotRandomPredictions(preds, x, z, true_smb, r, GCMLike, VAR_LIST, target_dataset, N = 10):
+def plotRandomPredictions(preds, x, z, true_smb, r, 
+							GCMLike, 
+							VAR_LIST, 
+							target_dataset, 
+              regions,
+							N = 10, 
+              **train_param
+						):
 	today = str(date.today())
 	
 	f = plt.figure(figsize=(20, 60))
@@ -272,7 +280,7 @@ def plotRandomPredictions(preds, x, z, true_smb, r, GCMLike, VAR_LIST, target_da
 	for i in range(N):
 			randTime = rn.randint(0, len(preds)-1)
 			sample2dtest_, sample_z, sampletarget_, samplepred_  = x[randTime], z[randTime], true_smb[randTime], preds[randTime]
-			region = REGIONS[r[randTime]] # region of sample
+			region = regions[r[randTime]] # region of sample
 			dt = pd.to_datetime([GCMLike.time.isel(time=randTime).values])
 			time = str(dt.date[0])
 		
@@ -295,17 +303,121 @@ def plotRandomPredictions(preds, x, z, true_smb, r, GCMLike, VAR_LIST, target_da
 					if m == 2:
 							ax = plt.subplot(N, M, (i * M) + m + 1, projection=ccrs.SouthPolarStereo())
 							plotPred(target_dataset, samplepred_, ax, vmin, vmax, region=region)						
-	nameFig = f'{today}_pred_{REGION}_{NUM_EPOCHS}_{BATCH_SIZE}.png'
+	nameFig = '{}_pred_{}_{}_{}.png'.format(today, region,train_param['num_epochs'],train_param['batch_size'])
 	plt.savefig(nameFig)
 	files.download(nameFig)
 
-def plotLoss(train_loss_e, val_loss_e, metric = 'MSE'):
-    f = plt.figure(figsize=(10, 5))
-    ax = plt.subplot(1, 2, 1)
-    ax.plot(train_loss_e)
-    ax.set_title(f'Training {metric} for {NUM_EPOCHS} epochs')
-    ax.set_xlabel('Num epochs')
-    ax = plt.subplot(1, 2, 2)
-    ax.plot(val_loss_e)
-    ax.set_title(f'Validation {metric} for {NUM_EPOCHS} epochs')
-    ax.set_xlabel('Num epochs')
+"""plotLoss: plots training and validation loss and metrics
+"""
+def plotLoss(train_loss_e, val_loss_e):
+	f = plt.figure(figsize=(20, 10))
+	ax = plt.subplot(2, 2, 1)
+	ax.plot(train_loss_e['MSE'])
+	ax.set_title(f'Training MSE for {NUM_EPOCHS} epochs')
+	ax.set_xlabel('Num epochs')
+	ax = plt.subplot(2, 2, 2)
+	ax.plot(val_loss_e['MSE'])
+	ax.set_title(f'Validation MSE for {NUM_EPOCHS} epochs')
+	ax.set_xlabel('Num epochs')
+	ax = plt.subplot(2, 2, 3)
+	ax.plot(val_loss_e['RMSE'])
+	ax.set_title(f'Validation RMSE for {NUM_EPOCHS} epochs')
+	ax.set_xlabel('Num epochs')
+	ax = plt.subplot(2, 2, 4)
+	ax.plot(val_loss_e['RMSE'])
+	ax.set_title(f'Validation RMSE for {NUM_EPOCHS} epochs')
+	ax.set_xlabel('Num epochs')
+	
+	
+	
+def trainFlow(
+	full_input,
+	full_target,
+	region: str = REGION,
+	test_percent: float = TEST_PERCENT,
+	val_percent: float = VAL_PERCENT,
+	seed: int = SEED,
+	num_epochs: int = NUM_EPOCHS,
+	batch_size: int = BATCH_SIZE,
+	lr: float = LR,
+	amp: bool = AMP,
+	train: bool = True,
+):
+	
+	# start logging
+	logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+	device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+	logging.info(f"Using device {device}")
+	
+	# Build U-Net
+	n_channels_x = 7
+	n_channels_z = 17
+	size = 32
+	filter = 64
+	
+	dir_checkpoint = Path("./checkpoints/")
+	
+	net = UNetMarijn(
+		n_channels_x=n_channels_x,
+		n_channels_z=n_channels_z,
+		size=size,
+		filter=filter,
+		bilinear=False,
+	)
+	
+	logging.info(
+		f"Network:\n"
+		f"\t{net.n_channels_x} input channels X\n"
+		f"\t{net.n_channels_z} input channels Z\n"
+		f"\t{net.size} size\n"
+		f"\t{net.filter} filter\n"
+		f'\t{"Bilinear" if net.bilinear else "Transposed conv"} upscaling'
+	)
+	
+	# if load model from .pth file
+	load = False  # type=str, default=False, Load model from a .pth file
+	if load:  # Load model from a .pth file
+		net.load_state_dict(torch.load(load, map_location=device))
+		logging.info(f"Model loaded from {load}")
+	
+	net.to(device=device)  # send to cuda
+	
+	# 1. Create dataset:
+	X = torch.tensor(full_input[0].transpose(0, 3, 1, 2))
+	Z = torch.tensor(full_input[1].transpose(0, 3, 1, 2))
+	Y = torch.tensor(full_target.transpose(0, 3, 1, 2))
+	
+	# Indicator of regions and their order if combined dataset
+	# Encoding 0-> Num regions
+	R = regionEncoder(X, region)
+	
+	# Create dataset:
+	dataset = TensorDataset(X, Z, Y, R)
+	
+	# 2. Split into test and train/val set:
+	n_test = int(len(dataset) * test_percent)
+	n_train = len(dataset) - n_test
+	logging.info(f"Test set size: {n_test}\n" f"Train set size: {n_train}\n")
+	train_set, test_set = random_split(
+		dataset, [n_train, n_test], generator=torch.Generator().manual_seed(seed)
+	)
+	
+	# 3. Train
+	if train:
+		train_loss_e, val_loss_e = train_net(
+			net=net,
+			dataset=train_set,
+			epochs=num_epochs,
+			batch_size=batch_size,
+			learning_rate=lr,
+			device=device,
+			val_percent=val_percent,
+			amp=amp,
+			dir_checkpoint=Path("./checkpoints/"),
+			region=region,
+		)
+		return train_loss_e, val_loss_e, train_set, test_set
+	else:
+		return train_set, test_set, net
+	
+	

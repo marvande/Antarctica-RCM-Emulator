@@ -1,6 +1,7 @@
 # Paths to data
 pathGC = f'Chris_data/RawData/MAR-ACCESS1.3/monthly/RCM/'
 pathCluster = '../../../../../../mlodata1/marvande/data/'
+pathModel = 'Chris_data/RawData/MAR-ACCESS1.3/monthly/SavedModels/checkpoints/'
 
 # If files are local or on GC
 DOWNLOAD_FROM_GC = True
