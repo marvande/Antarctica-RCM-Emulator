@@ -7,7 +7,8 @@ import torch
 import numpy as np
 from sklearn.metrics import mean_squared_error
 from matplotlib import pyplot as plt
-
+import random as rn
+import pandas as pd 
 from dataFunctions import *
 
 """
@@ -334,3 +335,76 @@ def plotMetrics(PearsonCorr, Wasserstein, ROV, RMSE, target_dataset, region, tod
     nameFig = f"{today}_metrics_{region}_{num_epochs}_{batch_size}.png"
     plt.savefig(nameFig)
     # files.download(nameFig)
+
+def randomPoints(points, PearsonCorr, true_smb_Larsen, preds_Larsen, target_dataset, GCMLike, train_set, region):
+    f = plt.figure(figsize=(20, 10))
+    ax1 = plt.subplot(2, 3, 1, projection=ccrs.SouthPolarStereo())
+    meanPearson = np.nanmean(PearsonCorr)
+    plotPearsonCorr(
+        target_dataset,
+        PearsonCorr,
+        meanPearson,
+        ax1,
+        np.nanmin(PearsonCorr),
+        np.nanmax(PearsonCorr),
+        region=region,
+    )
+    ds = createLowerTarget(target_dataset, region=region, Nx=64, Ny=64, print_=False)
+    
+    randTime = rn.randint(0, len(true_smb_Larsen) - 1)
+    dt = pd.to_datetime([GCMLike.time.isel(time=randTime).values])
+    time = str(dt.date[0])
+    
+    vmin = np.min([true_smb_Larsen[randTime], preds_Larsen[randTime]])
+    vmax = np.max([true_smb_Larsen[randTime], preds_Larsen[randTime]])
+    
+    ax2 = plt.subplot(2, 3, 2, projection=ccrs.SouthPolarStereo())
+    plotTarget(target_dataset, true_smb_Larsen[0], ax2, vmin, vmax, region=region)
+    
+    ax3 = plt.subplot(2, 3, 3, projection=ccrs.SouthPolarStereo())
+    plotPred(target_dataset, preds_Larsen[0], ax3, vmin, vmax, region=region)
+    
+    axs = [ax1, ax2, ax3]
+    for ax in axs:
+        for p in points:
+            ax.scatter(
+                ds.isel(x=p["x"]).x.values,
+                ds.isel(y=p["y"]).y.values,
+                marker="x",
+                s=100,
+                color="red",
+            )
+    plt.suptitle(time)
+    
+    # Plot timeseries
+    p = points[0]
+    randomPixel_pred = np.array(preds_Larsen)[:, p["y"], p["x"], 0]
+    randomPixel_targ = np.array(true_smb_Larsen)[:, p["y"], p["x"], 0]
+    df = pd.DataFrame(
+        data={"pred": randomPixel_pred, "target": randomPixel_targ},
+        index=target_dataset.time.values[len(train_set) :],
+    )
+    ax4 = plt.subplot(2, 3, 4)
+    ax4.plot(df["target"], label="target", color="blue", alpha=0.5)
+    ax4.plot(df["pred"], label="prediction", color="red", linestyle="--")
+    ax4.legend()
+    pearson = np.corrcoef(df["pred"], df["target"])[0, 1]
+    ax4.set_title('Point:{}, pearson:{:.2f}'.format(p, pearson))
+    
+    i = 5
+    for p in points[1:]:
+        randomPixel_pred = np.array(preds_Larsen)[:, p["y"], p["x"], 0]
+        randomPixel_targ = np.array(true_smb_Larsen)[:, p["y"], p["x"], 0]
+        df = pd.DataFrame(
+            data={"pred": randomPixel_pred, "target": randomPixel_targ},
+            index=target_dataset.time.values[len(train_set) :],
+        )
+        #ax = plt.subplot(2, 3, i, sharey=ax4)
+        ax = plt.subplot(2, 3, i)
+        ax.plot(df["target"], label="target", color="blue", alpha=0.5)
+        ax.plot(df["pred"], label="prediction", color="red", linestyle="--")
+        pearson = np.corrcoef(df["pred"], df["target"])[0, 1]
+        ax.set_title('Point:{}, pearson:{:.2f}'.format(p, pearson))
+        ax.legend()
+        i += 1
+    plt.suptitle(f"Three time series at different coordinates {time}")

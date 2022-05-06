@@ -37,7 +37,8 @@ def train_net(
 	save_checkpoint: bool = True,
 	amp: bool = False,
 	dir_checkpoint: str = Path("./checkpoints/"), 
-  region: str = 'Larsen'
+	region: str = 'Larsen', 
+	loss = 'MSE'
 ):
 	# 2. Split into train / validation partitions
 	n_val = int(len(dataset) * val_percent)
@@ -82,7 +83,11 @@ def train_net(
 		optimizer, "min", patience=4, verbose=1
 	)  # goal: minimize loss
 	grad_scaler = torch.cuda.amp.GradScaler(enabled=amp)
-	criterion = nn.MSELoss()
+	if loss == 'MSE':
+		criterion = nn.MSELoss()
+	if loss == 'MAE':
+		criterion = nn.L1Loss()
+	
 	global_step = 0
 	
 	# 5. Begin training
@@ -268,13 +273,10 @@ def plotRandomPredictions(preds, x, z, true_smb, r,
 							GCMLike, 
 							VAR_LIST, 
 							target_dataset, 
-              regions,
-							N = 10, 
-              **train_param
+							regions,
+							N = 10
 						):
-	today = str(date.today())
 	
-	f = plt.figure(figsize=(20, 60))
 	map_proj = ccrs.SouthPolarStereo(central_longitude=0.0, globe=None)
 	
 	for i in range(N):
@@ -303,9 +305,6 @@ def plotRandomPredictions(preds, x, z, true_smb, r,
 					if m == 2:
 							ax = plt.subplot(N, M, (i * M) + m + 1, projection=ccrs.SouthPolarStereo())
 							plotPred(target_dataset, samplepred_, ax, vmin, vmax, region=region)						
-	nameFig = '{}_pred_{}_{}_{}.png'.format(today, region,train_param['num_epochs'],train_param['batch_size'])
-	plt.savefig(nameFig)
-	files.download(nameFig)
 
 """plotLoss: plots training and validation loss and metrics
 """
@@ -334,6 +333,7 @@ def trainFlow(
 	full_input,
 	full_target,
 	region: str = REGION,
+	regions = REGIONS,
 	test_percent: float = TEST_PERCENT,
 	val_percent: float = VAL_PERCENT,
 	seed: int = SEED,
@@ -342,6 +342,8 @@ def trainFlow(
 	lr: float = LR,
 	amp: bool = AMP,
 	train: bool = True,
+	randomSplit:bool = True, 
+	loss: str = 'MSE'
 ):
 	
 	# start logging
@@ -389,18 +391,23 @@ def trainFlow(
 	
 	# Indicator of regions and their order if combined dataset
 	# Encoding 0-> Num regions
-	R = regionEncoder(X, region)
-	
-	# Create dataset:
-	dataset = TensorDataset(X, Z, Y, R)
+	R = regionEncoder(X, region, regions)
 	
 	# 2. Split into test and train/val set:
+	# Create dataset:
+	dataset = TensorDataset(X, Z, Y, R)
 	n_test = int(len(dataset) * test_percent)
 	n_train = len(dataset) - n_test
+	
+	if randomSplit:
+		train_set, test_set = random_split(
+			dataset, [n_train, n_test], generator=torch.Generator().manual_seed(seed)
+		)
+		
+	else:
+		train_set = TensorDataset(X[:n_train], Z[:n_train], Y[:n_train], R[:n_train])
+		test_set = TensorDataset(X[n_train:], Z[n_train:], Y[n_train:], R[n_train:])
 	logging.info(f"Test set size: {n_test}\n" f"Train set size: {n_train}\n")
-	train_set, test_set = random_split(
-		dataset, [n_train, n_test], generator=torch.Generator().manual_seed(seed)
-	)
 	
 	# 3. Train
 	if train:
@@ -415,8 +422,9 @@ def trainFlow(
 			amp=amp,
 			dir_checkpoint=Path("./checkpoints/"),
 			region=region,
+			loss = loss
 		)
-		return train_loss_e, val_loss_e, train_set, test_set
+		return train_loss_e, val_loss_e, train_set, test_set, net
 	else:
 		return train_set, test_set, net
 	

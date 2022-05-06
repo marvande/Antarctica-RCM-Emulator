@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from dataFunctions import *
+from config import *
 from math import cos,sin,pi
 
 def input_maker(
@@ -198,19 +199,19 @@ def target_maker(
 
 """"Create encoding of regions so that each sample has a number 
 that indicates which region of Antarctica it corresponds to."""
-def regionEncoder(X, REGION):
+def regionEncoder(X, region = REGION, regions=REGIONS):
 	# Indicator of regions and their order if combined dataset
 	# Encoding 0-> Num regions
-	regions = []
-	if REGION == "Combined":
-			N = int(len(X) / len(REGIONS))
-			for j in range(len(REGIONS)):
+	r_ = []
+	if region == "Combined":
+			N = int(len(X) / len(regions))
+			for j in range(len(regions)):
 					for i in range(N):
-							regions.append(j)
+							r_.append(j)
 	else:
 			N = len(X)
-			regions = [0 for i in range(N)]
-	R = torch.tensor(regions) # Change to tensor
+			r_ = [0 for i in range(N)]
+	R = torch.tensor(r_) # Change to tensor
 	return R
 
 
