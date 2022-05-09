@@ -189,9 +189,9 @@ def train_net(
 	)
 	
 	# Upload final model to GC:
-	pathGC = 'Chris_data/RawData/MAR-ACCESS1.3/monthly/SavedModels/'
-	uploadFileToGC(pathGC, str(dir_checkpoint / nameSave))
-	
+	#pathGC = 'Chris_data/RawData/MAR-ACCESS1.3/monthly/SavedModels/'
+	#uploadFileToGC(pathGC, str(dir_checkpoint / nameSave))
+	#files.download(str(dir_checkpoint / nameSave))
 	# Outputs of Losses for plots:
 	train_loss_out = {'MSE':train_loss_e, 'RMSE':train_rmse_e}
 	val_loss_out = {'MSE':val_loss_e, 'RMSE':val_rmse_e}

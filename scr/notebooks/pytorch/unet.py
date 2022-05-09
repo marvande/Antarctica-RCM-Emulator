@@ -39,6 +39,7 @@ class UNetMarijn(nn.Module):
 		self.up7 = OutConv(64, 1)
 		
 	def forward(self, x,z):
+		# input  (batch, 7, 32, 32)
 		x1 = self.initialconv(x) # (batch, 32, 32, 32)
 		
 		# Downsampling 

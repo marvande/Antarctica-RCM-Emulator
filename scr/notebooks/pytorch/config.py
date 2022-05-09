@@ -4,7 +4,7 @@ pathCluster = '../../../../../../mlodata1/marvande/data/'
 pathModel = 'Chris_data/RawData/MAR-ACCESS1.3/monthly/SavedModels/checkpoints/'
 
 # If files are local or on GC
-DOWNLOAD_FROM_GC = True
+DOWNLOAD_FROM_GC = False
 
 # FileNames
 fileTarget = 'MAR(ACCESS1-3)_monthly.nc'
