@@ -50,7 +50,7 @@ def train_net(
 	logging.info(f"Train set size: {n_val}\n" f"Validation set size: {n_train}\n")
 	# 3. Create data loaders
 	loader_args = dict(batch_size=batch_size, num_workers=4, pin_memory=True)
-	train_loader = DataLoader(train_set, shuffle=True, **loader_args)
+	train_loader = DataLoader(train_set, shuffle=False, **loader_args)
 	val_loader = DataLoader(val_set, shuffle=False, drop_last=True, **loader_args)
 	
 	# (Initialize logging)
