@@ -305,8 +305,32 @@ def plotRMSE(
     ax.gridlines()
     ax.set_title("[{}] RMSE, mean:{:.2f}".format(region, mean))
 
-
-def plotMetrics(PearsonCorr, Wasserstein, ROV, RMSE, target_dataset, region, today, num_epochs, batch_size):
+"""
+plotMetrics: Plot all metrics for each pixel (i,j)
+@input: 
+- xr.Dataset target_dataset: target dataset
+- PearsonCorr: pearson correlation at each pixel
+- Wasserstein: wasserstein distance at each pixel
+- ROV: ratio of variance at each pixel
+- RMSE: RMSE of variance at each pixel
+- str today: date of creation of plot (for save fig)
+- int num_epochs: number of epochs used to train model
+- int batch_size: batch size used to train model
+- str region: region of interest (e.g. Larsen)
+"""
+    
+    
+def plotMetrics(
+    PearsonCorr,
+    Wasserstein,
+    ROV,
+    RMSE,
+    target_dataset,
+    region: str,
+    today: str,
+    num_epochs: int,
+    batch_size: int,
+):
     fig = plt.figure(figsize=(25, 5))
     vmin, vmax = np.nanmin(PearsonCorr), np.nanmax(PearsonCorr)
     ax = plt.subplot(1, 4, 3, projection=ccrs.SouthPolarStereo())
@@ -314,31 +338,53 @@ def plotMetrics(PearsonCorr, Wasserstein, ROV, RMSE, target_dataset, region, tod
     plotPearsonCorr(
         target_dataset, PearsonCorr, meanPearson, ax, vmin, vmax, region=region
     )
-
+    
     ax = plt.subplot(1, 4, 4, projection=ccrs.SouthPolarStereo())
     vmin, vmax = np.nanmin(Wasserstein), np.nanmax(Wasserstein)
     meanWass = np.nanmean(Wasserstein)
     plotWasserstein(
         target_dataset, Wasserstein, meanWass, ax, vmin, vmax, region=region
     )
-
+    
     ax = plt.subplot(1, 4, 2, projection=ccrs.SouthPolarStereo())
     vmin, vmax = np.nanmin(ROV), np.nanmax(ROV)
     meanROV = np.nanmean(ROV)
     plotROV(target_dataset, ROV, meanROV, ax, vmin, vmax, region=region)
-
+    
     ax = plt.subplot(1, 4, 1, projection=ccrs.SouthPolarStereo())
     vmin, vmax = np.nanmin(RMSE), np.nanmax(RMSE)
     meanRMSE = np.nanmean(RMSE)
     plotRMSE(target_dataset, RMSE, meanRMSE, ax, vmin, vmax, region=region)
-
+    
     nameFig = f"{today}_metrics_{region}_{num_epochs}_{batch_size}.png"
     plt.savefig(nameFig)
     # files.download(nameFig)
+    
 
-def randomPoints(points, PearsonCorr, true_smb_Larsen, preds_Larsen, target_dataset, GCMLike, train_set, region):
+"""
+plotMetrics: plots the time series of three points, the pearson correlation plot and (mean) target/predictions 
+@input: 
+- xr.Dataset target_dataset: target dataset
+- xr.Dataset GCMLike: gcm like dataset
+- PearsonCorr: pearson correlation at each pixel
+- np.array true_smb_Larsen: true smb values
+- np.array preds_Larsen: predictions of smb values by model
+- torch dataset train_set: training set used to train model
+- str region: region of interest (e.g. Larsen)
+"""
+    
+def randomPoints(
+    points,
+    PearsonCorr,
+    true_smb_Larsen,
+    preds_Larsen,
+    target_dataset,
+    GCMLike,
+    train_set,
+    region: str,
+):
     f = plt.figure(figsize=(20, 10))
-    ax1 = plt.subplot(2, 3, 1, projection=ccrs.SouthPolarStereo())
+    ax1 = plt.subplot(3, 4, 1, projection=ccrs.SouthPolarStereo())
     meanPearson = np.nanmean(PearsonCorr)
     plotPearsonCorr(
         target_dataset,
@@ -354,17 +400,23 @@ def randomPoints(points, PearsonCorr, true_smb_Larsen, preds_Larsen, target_data
     randTime = rn.randint(0, len(true_smb_Larsen) - 1)
     dt = pd.to_datetime([GCMLike.time.isel(time=randTime).values])
     time = str(dt.date[0])
+    meanTarget = np.nanmean(np.array(true_smb_Larsen), axis = 0)
     
-    vmin = np.min([true_smb_Larsen[randTime], preds_Larsen[randTime]])
-    vmax = np.max([true_smb_Larsen[randTime], preds_Larsen[randTime]])
+    vmin = np.min([meanTarget, true_smb_Larsen[randTime], preds_Larsen[randTime]])
+    vmax = np.max([meanTarget, true_smb_Larsen[randTime], preds_Larsen[randTime]])
     
-    ax2 = plt.subplot(2, 3, 2, projection=ccrs.SouthPolarStereo())
-    plotTarget(target_dataset, true_smb_Larsen[0], ax2, vmin, vmax, region=region)
+    ax2 =  plt.subplot(3, 4, 2, projection=ccrs.SouthPolarStereo())
+    plotTarget(target_dataset, meanTarget, ax2, vmin, vmax, region=region)
+    ax2.set_title(f'Target: mean SMB, {region}')
     
-    ax3 = plt.subplot(2, 3, 3, projection=ccrs.SouthPolarStereo())
-    plotPred(target_dataset, preds_Larsen[0], ax3, vmin, vmax, region=region)
+    ax3 = plt.subplot(3, 4, 3, projection=ccrs.SouthPolarStereo())
+    plotTarget(target_dataset, true_smb_Larsen[0], ax3, vmin, vmax, region=region)
     
-    axs = [ax1, ax2, ax3]
+    ax4 = plt.subplot(3, 4, 4, projection=ccrs.SouthPolarStereo())
+    plotPred(target_dataset, preds_Larsen[0], ax4, vmin, vmax, region=region)
+
+    
+    axs = [ax1, ax2, ax3, ax4]
     for ax in axs:
         for p in points:
             ax.scatter(
@@ -384,14 +436,14 @@ def randomPoints(points, PearsonCorr, true_smb_Larsen, preds_Larsen, target_data
         data={"pred": randomPixel_pred, "target": randomPixel_targ},
         index=target_dataset.time.values[len(train_set) :],
     )
-    ax4 = plt.subplot(2, 3, 4)
-    ax4.plot(df["target"], label="target", color="blue", alpha=0.5)
-    ax4.plot(df["pred"], label="prediction", color="red", linestyle="--")
-    ax4.legend()
+    ax5 = plt.subplot(3, 4, (5, 6))
+    ax5.plot(df["target"], label="target", color="blue", alpha=0.5)
+    ax5.plot(df["pred"], label="prediction", color="red", linestyle="--")
+    ax5.legend()
     pearson = np.corrcoef(df["pred"], df["target"])[0, 1]
-    ax4.set_title('Point:{}, pearson:{:.2f}'.format(p, pearson))
+    ax5.set_title("Point:{}, pearson:{:.2f}".format(p, pearson))
     
-    i = 5
+    i = 7
     for p in points[1:]:
         randomPixel_pred = np.array(preds_Larsen)[:, p["y"], p["x"], 0]
         randomPixel_targ = np.array(true_smb_Larsen)[:, p["y"], p["x"], 0]
@@ -399,12 +451,13 @@ def randomPoints(points, PearsonCorr, true_smb_Larsen, preds_Larsen, target_data
             data={"pred": randomPixel_pred, "target": randomPixel_targ},
             index=target_dataset.time.values[len(train_set) :],
         )
-        #ax = plt.subplot(2, 3, i, sharey=ax4)
-        ax = plt.subplot(2, 3, i)
+        # ax = plt.subplot(2, 3, i, sharey=ax5)
+        ax = plt.subplot(3, 4, (i, i+1))
         ax.plot(df["target"], label="target", color="blue", alpha=0.5)
         ax.plot(df["pred"], label="prediction", color="red", linestyle="--")
         pearson = np.corrcoef(df["pred"], df["target"])[0, 1]
-        ax.set_title('Point:{}, pearson:{:.2f}'.format(p, pearson))
+        ax.set_title("Point:{}, pearson:{:.2f}".format(p, pearson))
         ax.legend()
-        i += 1
+        i += 2
     plt.suptitle(f"Three time series at different coordinates {time}")
+    

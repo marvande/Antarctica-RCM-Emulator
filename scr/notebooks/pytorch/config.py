@@ -27,3 +27,4 @@ TEST_PERCENT = 0.1
 SAVE_CHECKPOINT = True
 AMP = False
 SEED = 123
+TYPENET = 'Variance'

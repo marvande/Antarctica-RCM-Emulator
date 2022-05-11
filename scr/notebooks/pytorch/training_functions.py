@@ -21,7 +21,7 @@ import pandas as pd
 import numpy as np
 from google.colab import files
 
-from GC_scripts import * # Google cloud scripts
+#from GC_scripts import * # Google cloud scripts
 from dataFunctions import *
 from unet import *
 from makeInputs import *
@@ -38,7 +38,8 @@ def train_net(
 	amp: bool = False,
 	dir_checkpoint: str = Path("./checkpoints/"), 
 	region: str = 'Larsen', 
-	loss = 'MSE'
+	loss: str = 'MSE', 
+	typeNet: str = 'Baseline'
 ):
 	# 2. Split into train / validation partitions
 	n_val = int(len(dataset) * val_percent)
@@ -182,10 +183,18 @@ def train_net(
 	# Save final model:
 	Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)
 	today = str(date.today())
-	nameSave = f"MODEL_{today}_{region}_{epochs}_{batch_size}.pth"
+	nameSave = f"MODEL_{today}_{region}_{epochs}_{batch_size}_{typeNet}.pth"
+	# save locally
 	torch.save(
 		net.state_dict(),
 		str(dir_checkpoint / nameSave),
+	)
+	# save to google drive:
+	logging.info('Saving model on google drive')
+	pathGD = f"/content/gdrive/My Drive/Master-thesis/saved_models/{nameSave}" 
+	torch.save(
+		net.state_dict(),
+		pathGD,
 	)
 	
 	# Upload final model to GC:
@@ -343,7 +352,8 @@ def trainFlow(
 	amp: bool = AMP,
 	train: bool = True,
 	randomSplit:bool = True, 
-	loss: str = 'MSE'
+	loss: str = 'MSE', 
+	typeNet: str='Baseline'
 ):
 	
 	# start logging
@@ -359,13 +369,22 @@ def trainFlow(
 	
 	dir_checkpoint = Path("./checkpoints/")
 	
-	net = UNetMarijn(
-		n_channels_x=n_channels_x,
-		n_channels_z=n_channels_z,
-		size=size,
-		filter=filter,
-		bilinear=False,
-	)
+	if typeNet == 'Variance':
+		logging.info('Variance model')
+		net = UNetVariance(
+			n_channels_x=n_channels_x,
+			n_channels_z=n_channels_z,
+			size=size,
+			filter=filter,
+			bilinear=False,)
+	else:
+		logging.info('Baseline model')
+		net = UNetBaseline(
+				n_channels_x=n_channels_x,
+				n_channels_z=n_channels_z,
+				size=size,
+				filter=filter,
+				bilinear=False,)
 	
 	logging.info(
 		f"Network:\n"
@@ -389,6 +408,13 @@ def trainFlow(
 	Z = torch.tensor(full_input[1].transpose(0, 3, 1, 2))
 	Y = torch.tensor(full_target.transpose(0, 3, 1, 2))
 	
+	# Add temporal variance to X for each pixel and channel:
+	if typeNet == 'Variance':
+		Xstd = X.std(dim = 0).unsqueeze(0) # std over all time period and channels
+		Xstd = torch.repeat_interleave(Xstd, X.shape[0], dim=0) # (t_total, 7, 32, 32)
+		
+		X = torch.cat([X, Xstd], dim = 1) # (t_total, 14, 32, 32)
+	print('X shape: {}'.format(X.shape))
 	# Indicator of regions and their order if combined dataset
 	# Encoding 0-> Num regions
 	R = regionEncoder(X, region, regions)
@@ -422,7 +448,8 @@ def trainFlow(
 			amp=amp,
 			dir_checkpoint=Path("./checkpoints/"),
 			region=region,
-			loss = loss
+			loss = loss, 
+			typeNet = typeNet
 		)
 		return train_loss_e, val_loss_e, train_set, test_set, net
 	else:

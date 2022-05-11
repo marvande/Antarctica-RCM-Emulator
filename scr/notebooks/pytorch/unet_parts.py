@@ -93,10 +93,12 @@ class UpLastConv(nn.Module):
 	
 class InitialConv(nn.Module):
 		def __init__(self, in_channels, out_channels, sizex, size):
-				super(InitialConv, self).__init__()
+				super().__init__()
 				self.diff = sizex-size+1
+				self.n_channels_in = in_channels
+				self.n_channels_out = out_channels
 				self.firstconv = nn.Sequential(
-						nn.Conv2d(in_channels, out_channels, kernel_size=self.diff), 
+						nn.Conv2d(self.n_channels_in, self.n_channels_out, kernel_size=self.diff), 
 						nn.BatchNorm2d(out_channels),
 						nn.ReLU(inplace=True)
 				)
@@ -106,7 +108,7 @@ class InitialConv(nn.Module):
 	
 class OutConv(nn.Module):
 		def __init__(self, in_channels, out_channels):
-				super(OutConv, self).__init__()
+				super().__init__()
 				self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1)
 			
 		def forward(self, x):
@@ -116,7 +118,7 @@ class LinearUpsamplingZ(nn.Module):
 	# Linear upsampling of z to same number of channels as downsampled X
 	# so that can concatenate
 	def __init__(self, in_channels=16, out_channels=1024):
-		super(LinearUpsamplingZ, self).__init__()
+		super().__init__()
 		self.linearUp = nn.Sequential(
 				nn.Linear(in_channels, 128), 
 				nn.Linear(128, 256),
