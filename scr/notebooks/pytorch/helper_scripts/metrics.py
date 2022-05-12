@@ -279,7 +279,7 @@ plotRMSE: Plot a 2D plot whit its RMSE for each pixel (i,j)
 
 
 def plotRMSE(
-    target_dataset, samplermse, mean, ax, vmin, vmax, region="Whole Antarctica"
+    target_dataset, samplermse, mean, ax, vmin, vmax, region="Whole Antarctica", cmap = "GnBu"
 ):
     if region != "Whole Antarctica":
         ds = createLowerTarget(
@@ -291,7 +291,6 @@ def plotRMSE(
     dftrain = xr.Dataset(coords=coords, attrs=ds.attrs)
     dftrain["RMSE"] = xr.Variable(dims=("y", "x"), data=samplermse[:, :, 0])
     # cmap = 'RdYlBu_r'
-    cmap = "GnBu"
     dftrain.RMSE.plot(
         ax=ax,
         x="x",
