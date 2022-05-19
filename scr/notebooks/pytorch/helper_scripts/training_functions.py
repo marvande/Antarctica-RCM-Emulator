@@ -21,15 +21,18 @@ import pandas as pd
 import numpy as np
 from google.colab import files
 
+
 #from GC_scripts import * # Google cloud scripts
 from dataFunctions import *
 from unet import *
+from SmaAt_UNet import *
 from makeInputs import *
 
 def train_net(
 	net,
 	dataset,
 	device,
+	mask,
 	epochs: int = 5,
 	batch_size: int = 1,
 	learning_rate: float = 1e-5,
@@ -38,8 +41,9 @@ def train_net(
 	amp: bool = False,
 	dir_checkpoint: str = Path("./checkpoints/"), 
 	region: str = 'Larsen', 
-	loss: str = 'MSE', 
-	typeNet: str = 'Baseline'
+	loss_: str = 'MSE', 
+	typeNet: str = 'Baseline', 
+	ignoreSea: bool = True,
 ):
 	# 2. Split into train / validation partitions
 	n_val = int(len(dataset) * val_percent)
@@ -47,11 +51,12 @@ def train_net(
 	train_set, val_set = random_split(
 		dataset, [n_train, n_val], generator=torch.Generator().manual_seed(SEED)
 	)
-	logging.info(f"Train set size: {n_val}\n" f"Validation set size: {n_train}\n")
+	logging.info(f"Train set size: {n_train}\n" f"Validation set size: {n_val}\n")
 	# 3. Create data loaders
 	loader_args = dict(batch_size=batch_size, num_workers=4, pin_memory=True)
 	train_loader = DataLoader(train_set, shuffle=False, **loader_args)
 	val_loader = DataLoader(val_set, shuffle=False, drop_last=True, **loader_args)
+	
 	
 	# (Initialize logging)
 	experiment = wandb.init(project="U-Net", resume="allow", anonymous="must")
@@ -84,25 +89,24 @@ def train_net(
 		optimizer, "min", patience=4, verbose=1
 	)  # goal: minimize loss
 	grad_scaler = torch.cuda.amp.GradScaler(enabled=amp)
-	if loss == 'MSE':
-		criterion = nn.MSELoss()
-	if loss == 'MAE':
-		criterion = nn.L1Loss()
 	
+	
+	MSE = nn.MSELoss()
 	global_step = 0
 	
 	# 5. Begin training
-	train_loss_e, val_loss_e = [], [] # MSE per epoch
 	train_rmse_e, val_rmse_e = [], [] # RMSE per epoch
+	train_nrmse_e, val_nrmse_e = [], [] # NRMSE per epoch
+	train_mse_e, val_mse_e = [], [] # MSE per epoch
+	
 	for epoch in range(1, epochs + 1):
 		net.train()
 		epoch_loss = 0
 		with tqdm(
 			total=n_train, desc=f"Epoch {epoch}/{epochs}", unit="timestep"
 		) as pbar:
-			train_loss, val_loss = 0, 0 # MSE
-			train_rmse, val_rmse = 0, 0 # RMSE
-			
+			# MSE, RMSE and NRMSE
+			train_mse, train_rmse, train_nrmse, val_mse, val_rmse, val_nrmse = 0, 0, 0, 0, 0, 0
 			for batch in train_loader:
 				X_train, Z_train, Y_train, R_train = (
 					batch[0],
@@ -113,16 +117,35 @@ def train_net(
 				X_train_cuda = X_train.to(device=device, dtype=torch.float32)
 				Z_train_cuda = Z_train.to(device=device, dtype=torch.float32)
 				true_smb = Y_train.to(device=device, dtype=torch.float32)
+				mask = mask.to(device=device, dtype=torch.float32)
 				
 				with torch.cuda.amp.autocast(enabled=amp):
 					smb_pred = net(X_train_cuda, Z_train_cuda)
-					loss = criterion(smb_pred, true_smb)
-					train_loss += loss.item()  # mse for plots
 					
 					# evaluation metrics:
-					train_rmse += torch.sqrt(loss).item() # rmse
+					mse = MSE(smb_pred, true_smb) # MSE loss
 					
+					# calculate only over land:
+					if ignoreSea:
+						non_zero_elements = mask.sum()
+						mse = (mse * mask.float()).sum()
+						mse = mse / non_zero_elements
 					
+					rmse = torch.sqrt(mse) # rmse
+					nrmse = (torch.sqrt(mse)/(torch.max(true_smb) - torch.min(true_smb))) # nrmse
+					
+					if loss_ == 'NRMSE':
+						loss = nrmse
+					if loss_ == 'MSE':
+						loss = mse
+					if loss_ == 'RMSE':
+						loss = rmse
+						
+					train_rmse += rmse.item()  # train rmse
+					train_nrmse += nrmse.item() # train nrmse
+					train_mse += mse.item() # train mse
+									
+				# Gradient descent with optimizer:
 				optimizer.zero_grad(set_to_none=True)
 				grad_scaler.scale(loss).backward()
 				grad_scaler.step(optimizer)
@@ -141,12 +164,14 @@ def train_net(
 				if division_step > 0:
 					if global_step % division_step == 0:
 						histograms = {}
-						val_score, val_rmse_score = evaluate(net, val_loader, device, criterion)
-						val_loss += val_score.item() # mse
+						val_score, val_mse_score, val_rmse_score, val_nrmse_score = evaluate(net, val_loader, device, MSE, loss_, mask, ignoreSea)
 						
 						val_rmse += val_rmse_score # rmse
+						val_nrmse += val_nrmse_score # nrmse
+						val_mse += val_mse_score # mse
 						
-						scheduler.step(val_score)
+						# Step of optimizer wrt validation loss
+						scheduler.step(val_score) 
 						
 						# logging.info('Validation MSE loss: {}'.format(val_score))
 						experiment.log(
@@ -164,6 +189,7 @@ def train_net(
 							}
 						)
 						
+						
 		if save_checkpoint:
 			Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)
 			torch.save(
@@ -172,46 +198,46 @@ def train_net(
 			)
 			logging.info(f"Checkpoint {epoch} saved!")
 			
-		train_loss_e.append(
-			train_loss / len(train_loader)
-		)  # return train loss divided by num batches
+		# Train and val loss per epoch for plots:
+		train_rmse_e.append(train_rmse / len(train_loader))	
+		train_nrmse_e.append(train_nrmse / len(train_loader))
+		train_mse_e.append(train_mse / len(train_loader))
 		
-		train_rmse_e.append(train_rmse / len(train_loader))		
-		val_loss_e.append(val_loss / len(val_loader))
-		val_rmse_e.append(val_rmse / len(val_loader)) 
+		val_rmse_e.append(val_rmse / len(val_loader))
+		val_mse_e.append(val_mse / len(val_loader))
+		val_nrmse_e.append(val_nrmse / len(val_loader)) 
 		
 	# Save final model:
 	Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)
 	today = str(date.today())
-	nameSave = f"MODEL_{today}_{region}_{epochs}_{batch_size}_{typeNet}.pth"
-	# save locally
+	nameSave = f"MODEL_{today}_{region}_{epochs}_{batch_size}_{typeNet}_{loss_}.pth"
+	# Save locally
 	torch.save(
 		net.state_dict(),
 		str(dir_checkpoint / nameSave),
 	)
-	# save to google drive:
+	# Save to google drive:
 	logging.info('Saving model on google drive')
 	pathGD = f"/content/gdrive/My Drive/Master-thesis/saved_models/{nameSave}" 
 	torch.save(
 		net.state_dict(),
 		pathGD,
 	)
-	
-	# Upload final model to GC:
+	# Upload final model to google cloud:
 	#pathGC = 'Chris_data/RawData/MAR-ACCESS1.3/monthly/SavedModels/'
 	#uploadFileToGC(pathGC, str(dir_checkpoint / nameSave))
 	#files.download(str(dir_checkpoint / nameSave))
+	
 	# Outputs of Losses for plots:
-	train_loss_out = {'MSE':train_loss_e, 'RMSE':train_rmse_e}
-	val_loss_out = {'MSE':val_loss_e, 'RMSE':val_rmse_e}
+	train_loss_out = {'MSE':train_mse_e, 'RMSE':train_rmse_e, 'NRMSE':train_nrmse_e}
+	val_loss_out = {'MSE':val_mse_e, 'RMSE':val_rmse_e, 'NRMSE':val_nrmse_e}
 	return train_loss_out, val_loss_out 
 
 
-def evaluate(net, dataloader, device, criterion):
+def evaluate(net, dataloader, device, MSE, loss_, mask, ignoreSea):
 	net.eval()
 	num_val_batches = len(dataloader)
-	mse_loss = 0
-	rmse = 0
+	mse_e, rmse_e, nrmse_e, val_score_e = 0, 0, 0, 0
 	
 	# iterate over the validation set
 	# for batch in tqdm(dataloader, total=num_val_batches, desc='Validation round', unit='batch', leave=False):
@@ -225,34 +251,54 @@ def evaluate(net, dataloader, device, criterion):
 		with torch.no_grad():
 			# predict the mask
 			smb_pred = net(X_val_cuda, Z_val_cuda)
-			mse_loss += criterion(smb_pred, true_smb)
+			mse = MSE(smb_pred, true_smb)
+			
+			if ignoreSea:
+				non_zero_elements = mask.sum()
+				mse = (mse * mask.float()).sum()
+				mse = mse / non_zero_elements
+			
+			mse_e += mse.item()
 			
 			# rmse:
-			rmse += torch.sqrt(mse_loss).item()
+			rmse = torch.sqrt(mse)
+			rmse_e += rmse.item()
+			
+			# normalised rmse:
+			nrmse = (torch.sqrt(mse)/(torch.max(true_smb) - torch.min(true_smb)))
+			nrmse_e += nrmse.item()
+			
+			if loss_ == 'NRMSE':
+				val_score_e += nrmse # tensor
+			if loss_ == 'MSE':
+				val_score_e += mse # tensor
+			if loss_ == 'RMSE':
+				val_score_e += rmse # tensor
+			
 	net.train()
 	# Fixes a potential division by zero error
 	if num_val_batches == 0:
-		return mse_loss
+		return mse_e
 	
-	mse_e  = mse_loss / num_val_batches
-	rmse_e  = rmse / num_val_batches
-	return mse_e, rmse_e
-
+	val_mse_score  = mse_e / num_val_batches # numpy
+	val_rmse_score  = rmse_e / num_val_batches # numpy
+	val_nrmse_score  = nrmse_e / num_val_batches # numpy
+	
+	val_score = val_score_e / num_val_batches # tensor
+		
+	return val_score, val_mse_score, val_rmse_score, val_nrmse_score
 
 def predict(net, device, test_loader, model, 
 	dir_checkpoint: str = Path("./checkpoints/")):
 	logging.info(f"Loading saved model {model}")
 	logging.info(f"Using device {device}")
 	
+	# Load saved pt model
 	net.to(device=device)
 	net.load_state_dict(torch.load(str(model), map_location=device))
 	logging.info("Saved model loaded!")
 	
-	preds = []
-	x = []
-	z = []
-	y = []
-	r = []
+	preds, x, y, z, r = [], [], [], [], []
 	
 	for batch in tqdm(
 		test_loader,
@@ -262,13 +308,13 @@ def predict(net, device, test_loader, model,
 		leave=False,
 	):
 		X_test, Z_test, Y_test, R_test = batch[0], batch[1], batch[2], batch[3]
-		X_test_cuda = X_test.to(device=device, dtype=torch.float32)
-		Z_test_cuda = Z_test.to(device=device, dtype=torch.float32)
-		true_smb = Y_test.to(device=device, dtype=torch.float32)
+		X_test_cuda = X_test.to(device=device, dtype=torch.float32) # send to device
+		Z_test_cuda = Z_test.to(device=device, dtype=torch.float32) # send to device
+		true_smb = Y_test.to(device=device, dtype=torch.float32) # send to device
 	
 		net.eval()
 		prediction = net(X_test_cuda, Z_test_cuda)
-		prediction = prediction.cpu().detach().numpy()
+		prediction = prediction.cpu().detach().numpy() # send to device
 		preds.append(prediction.transpose(0, 2, 3, 1)[0])  # change to numpy
 		x.append(X_test.numpy().transpose(0, 2, 3, 1)[0])
 		z.append(Z_test.numpy().transpose(0, 2, 3, 1)[0])
@@ -280,6 +326,7 @@ def predict(net, device, test_loader, model,
 
 def plotRandomPredictions(preds, x, z, true_smb, r, 
 							GCMLike, 
+							interp_dataset,
 							VAR_LIST, 
 							target_dataset, 
 							regions,
@@ -299,48 +346,90 @@ def plotRandomPredictions(preds, x, z, true_smb, r,
 					sample2dtest_ = resize(sample2dtest_, 25, 48, print_=False)
 			else:
 					sample2dtest_ = resize(sample2dtest_, 25, 90, print_=False)
-				
-			vmin = np.min([sampletarget_, samplepred_])
-			vmax = np.max([sampletarget_, samplepred_])
-		
-			M = 3
+			
+			masktarget = np.expand_dims(createMask(sampletarget_, onechannel = True),2)
+			
+			dsGCM = createLowerInput(GCMLike, region='Larsen', Nx=35, Ny=25, print_=False)
+			dsGCM = dsGCM.where(dsGCM.y > 0, drop=True)
+			
+			dsRCM = createLowerTarget(
+				interp_dataset, region=region, Nx=64, Ny=64, print_=False
+			)
+			
+			# apply mask to show only values on ice/land
+			sampletarget_ = masktarget*sampletarget_
+			sampletarget_[sampletarget_ == 0] = 'nan'
+			
+			samplepred_ = masktarget*samplepred_
+			samplepred_[samplepred_ == 0] = 'nan'
+			
+			sampleinterp_ = dsRCM.SMB.isel(time = randTime).values
+			sampleinterp_ = np.expand_dims(sampleinterp_,2)
+			sampleinterp_ = masktarget*sampleinterp_
+			sampleinterp_[sampleinterp_ == 0] = 'nan'
+			
+			min_RCM = np.nanmin([sampletarget_, samplepred_])
+			max_RCM = np.nanmax([sampletarget_, samplepred_])
+			
+			sampleGCM_ = dsGCM.SMB.isel(time = randTime).values
+			min_GCM_Like = np.min(sampleGCM_)
+			max_GCM_Like = np.max(sampleGCM_)
+			
+			vmin = np.nanmin([min_RCM, np.nanmin(sampleinterp_)])
+			vmax = np.nanmax([max_RCM, np.nanmax(sampleinterp_)])
+			
+			M = 4
 			for m in range(M):
 					if m == 0:
 							ax = plt.subplot(N, M, (i * M) + m + 1, projection=ccrs.SouthPolarStereo())
-							plotTrain(GCMLike, sample2dtest_, 4, ax, time, VAR_LIST, region=region)
+							#plotTrain(GCMLike, sample2dtest_, 4, ax, time, VAR_LIST, region=region)
+							if region == 'Larsen':
+								dsGCM.SMB.isel(time = randTime).plot(x='x', ax = ax, transform=ccrs.SouthPolarStereo(),
+															add_colorbar=True,
+									cmap="RdYlBu_r")
+								ax.coastlines("10m", color="black")
+								ax.gridlines()
+								ax.set_title(f"{time} GCM SMB")
 					if m == 1:
 							ax = plt.subplot(N, M, (i * M) + m + 1, projection=ccrs.SouthPolarStereo())
-							plotTarget(target_dataset, sampletarget_, ax, vmin, vmax, region=region)
+							plotInterp(target_dataset, sampleinterp_, ax, vmin, vmax, region=region)
+
 					if m == 2:
 							ax = plt.subplot(N, M, (i * M) + m + 1, projection=ccrs.SouthPolarStereo())
-							plotPred(target_dataset, samplepred_, ax, vmin, vmax, region=region)						
+							im = plotTarget(target_dataset, sampletarget_, ax, vmin, vmax, region=region)
+					if m == 3:
+							ax = plt.subplot(N, M, (i * M) + m + 1, projection=ccrs.SouthPolarStereo())
+							plotPred(target_dataset, samplepred_, ax, vmin, vmax, region=region)		
+							
 
 """plotLoss: plots training and validation loss and metrics
 """
 def plotLoss(train_loss_e, val_loss_e):
-	f = plt.figure(figsize=(20, 10))
-	ax = plt.subplot(2, 2, 1)
-	ax.plot(train_loss_e['MSE'])
-	ax.set_title(f'Training MSE for {NUM_EPOCHS} epochs')
-	ax.set_xlabel('Num epochs')
-	ax = plt.subplot(2, 2, 2)
-	ax.plot(val_loss_e['MSE'])
-	ax.set_title(f'Validation MSE for {NUM_EPOCHS} epochs')
-	ax.set_xlabel('Num epochs')
-	ax = plt.subplot(2, 2, 3)
-	ax.plot(val_loss_e['RMSE'])
-	ax.set_title(f'Validation RMSE for {NUM_EPOCHS} epochs')
-	ax.set_xlabel('Num epochs')
-	ax = plt.subplot(2, 2, 4)
-	ax.plot(val_loss_e['RMSE'])
-	ax.set_title(f'Validation RMSE for {NUM_EPOCHS} epochs')
+	f = plt.figure(figsize=(10, 8))
+	ax = plt.subplot(3, 1, 1)
+	ax.plot(train_loss_e['MSE'], label = 'training')
+	ax.plot(val_loss_e['MSE'], label = 'validation')
+	ax.set_title(f'MSE for {NUM_EPOCHS} epochs')
 	ax.set_xlabel('Num epochs')
 	
+	ax = plt.subplot(3, 1, 2)
+	ax.plot(train_loss_e['RMSE'], label = 'training')
+	ax.plot(val_loss_e['RMSE'], label = 'validation')
+	ax.set_title(f'RMSE for {NUM_EPOCHS} epochs')
+	ax.set_xlabel('Num epochs')
 	
+	ax = plt.subplot(3, 1, 3)
+	ax.plot(train_loss_e['NRMSE'], label = 'training')
+	ax.plot(val_loss_e['NRMSE'], label = 'validation')
+	ax.set_title(f'NRMSE for {NUM_EPOCHS} epochs')
+	ax.set_xlabel('Num epochs')
+	plt.legend()
+	plt.tight_layout()
 	
 def trainFlow(
 	full_input,
 	full_target,
+	mask,
 	region: str = REGION,
 	regions = REGIONS,
 	test_percent: float = TEST_PERCENT,
@@ -352,8 +441,9 @@ def trainFlow(
 	amp: bool = AMP,
 	train: bool = True,
 	randomSplit:bool = True, 
-	loss: str = 'MSE', 
-	typeNet: str='Baseline'
+	loss_: str = 'MSE', 
+	typeNet: str='Baseline',
+	ignoreSea: bool = True
 ):
 	
 	# start logging
@@ -377,6 +467,13 @@ def trainFlow(
 			size=size,
 			filter=filter,
 			bilinear=False,)
+		
+	if typeNet == 'Attention':
+		logging.info('Attention SmAt_UNet model')
+		net = SmaAt_UNet(
+						n_channels_x=n_channels_x,
+						n_channels_z=n_channels_z,
+						bilinear=False,)	
 	else:
 		logging.info('Baseline model')
 		net = UNetBaseline(
@@ -390,8 +487,6 @@ def trainFlow(
 		f"Network:\n"
 		f"\t{net.n_channels_x} input channels X\n"
 		f"\t{net.n_channels_z} input channels Z\n"
-		f"\t{net.size} size\n"
-		f"\t{net.filter} filter\n"
 		f'\t{"Bilinear" if net.bilinear else "Transposed conv"} upscaling'
 	)
 	
@@ -439,6 +534,7 @@ def trainFlow(
 	if train:
 		train_loss_e, val_loss_e = train_net(
 			net=net,
+			mask = mask,
 			dataset=train_set,
 			epochs=num_epochs,
 			batch_size=batch_size,
@@ -448,8 +544,9 @@ def trainFlow(
 			amp=amp,
 			dir_checkpoint=Path("./checkpoints/"),
 			region=region,
-			loss = loss, 
-			typeNet = typeNet
+			loss_ = loss_, 
+			typeNet = typeNet,
+			ignoreSea = ignoreSea
 		)
 		return train_loss_e, val_loss_e, train_set, test_set, net
 	else:

@@ -17,6 +17,7 @@ fileGCMLike = 'MAR(ACCESS1-3)-stereographic_monthly_GCM_like.nc'
 REGION ="Larsen"
 REGIONS = ['Larsen', 'Wilkes', 'Maud', 'Amundsen']
 
+
 SIZE_INPUT_DOMAIN = 32
 
 # Training param
@@ -28,4 +29,5 @@ TEST_PERCENT = 0.1
 SAVE_CHECKPOINT = True
 AMP = False
 SEED = 123
-TYPENET = 'Variance'
+TYPENET = 'Baseline'
+LOSS_ = 'NRMSE'

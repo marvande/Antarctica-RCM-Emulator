@@ -116,7 +116,7 @@ def plotTrain(
         ax=ax,
         x="x",
         transform=ccrs.SouthPolarStereo(),
-        add_colorbar=True,
+        add_colorbar=False,
         cmap="RdYlBu_r",
     )
     
@@ -152,7 +152,7 @@ def plotTarget(
         ax=ax,
         x="x",
         transform=ccrs.SouthPolarStereo(),
-        add_colorbar=True,
+        add_colorbar=False,
         cmap="RdYlBu_r",
         vmin=vmin,
         vmax=vmax,
@@ -160,6 +160,45 @@ def plotTarget(
     ax.coastlines("10m", color="black")
     ax.gridlines()
     ax.set_title(f"Target: SMB, {region}")
+    
+    return pl
+    
+    
+"""
+plotInterp: Plot a interpolated SMB sample for a certain time step
+"""
+def plotInterp(
+    target_dataset,  # target RCM dataset
+    sampletarget,  # 2d target sample
+    ax,
+    vmin,  # min value of prediction and target, for shared colorbar
+    vmax,  # max value of prediction and target, for shared colorbar
+    region="Whole Antarctica",  # region
+):
+    if region != "Whole Antarctica":
+        ds = createLowerTarget(
+            target_dataset, region=region, Nx=64, Ny=64, print_=False
+        )
+    else:
+        ds = target_dataset
+        
+    coords = {"y": ds.coords["y"], "x": ds.coords["x"]}
+    dftrain = xr.Dataset(coords=coords, attrs=ds.attrs)
+    dftrain["SMB"] = xr.Variable(
+        dims=("y", "x"), data=sampletarget[:, :, 0], attrs=ds["SMB"].attrs
+    )
+    pl = dftrain.SMB.plot(
+        ax=ax,
+        x="x",
+        transform=ccrs.SouthPolarStereo(),
+        add_colorbar=False,
+        cmap="RdYlBu_r",
+        vmin=vmin,
+        vmax=vmax,
+    )
+    ax.coastlines("10m", color="black")
+    ax.gridlines()
+    ax.set_title(f"Interpolated SMB, {region}")
     
 
 """
@@ -188,7 +227,7 @@ def plotPred(
         ax=ax,
         x="x",
         transform=ccrs.SouthPolarStereo(),
-        add_colorbar=True,
+        add_colorbar=False,
         cmap="RdYlBu_r",
         vmin=vmin,
         vmax=vmax,
@@ -286,3 +325,19 @@ def createLowerInput(
         print("New dimensions:", df.dims)
         
     return df
+
+# create mask
+def createMask(true_smb, onechannel = True):
+    arraySMB = np.array(true_smb)
+    if onechannel:
+        dimx = true_smb.shape[1]
+        dimy = true_smb.shape[0]
+    mask = np.empty((dimy,dimx))
+    for y in range(dimy):
+        for x in range(dimx):
+            pixelSMB = arraySMB[y,x,0]
+            if not np.any(pixelSMB): # check if all zeros (then on sea)
+                mask[y,x] = 0
+            else:
+                mask[y,x] = 1
+    return mask
