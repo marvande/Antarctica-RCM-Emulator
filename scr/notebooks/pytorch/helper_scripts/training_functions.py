@@ -486,8 +486,8 @@ def trainFlow(
 	logging.info(f"Using device {device}")
 	
 	# Build U-Net
-	n_channels_x = 8
-	n_channels_z = 19
+	n_channels_x = 7
+	n_channels_z = 17
 	size = 32
 	filter = 64
 	

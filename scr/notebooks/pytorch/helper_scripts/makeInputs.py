@@ -27,7 +27,7 @@ def input_maker(
 	"""
 		
 	# Remove target variable from DATASET:
-	# DATASET = DATASET.drop(["SMB"])
+	DATASET = DATASET.drop(["SMB"])
 	
 	nbmonths = DATASET.dims["time"]
 	x = DATASET.dims["x"]
