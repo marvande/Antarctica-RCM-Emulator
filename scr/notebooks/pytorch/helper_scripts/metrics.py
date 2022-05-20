@@ -25,9 +25,8 @@ calculates pearson correlation between the timeseries of each pixel (i,j) of pre
 
 
 def calculatePearson(preds, true_smb, ignoreSea=True):
-    predictions = torch.tensor(preds)
-    target = torch.tensor(true_smb)
-
+    predictions = torch.tensor(preds).clone().detach()
+    target = torch.tensor(true_smb).clone().detach()
     PearsonCorr = np.empty((predictions.shape[1], predictions.shape[2], 1))
     for i in range(predictions.shape[1]):  # x
         for j in range(predictions.shape[2]):  # y
@@ -91,8 +90,8 @@ calculates wasserstein distance between the timeseries of each pixel (i,j) of pr
 
 
 def calculateWasserstein(preds, true_smb, ignoreSea=True):
-    predictions = torch.tensor(preds)
-    target = torch.tensor(true_smb)
+    predictions = torch.tensor(preds).clone().detach()
+    target = torch.tensor(true_smb).clone().detach()
     Wasserstein = np.empty((predictions.shape[1], predictions.shape[2], 1))
     for i in range(predictions.shape[1]):  # x
         for j in range(predictions.shape[2]):  # y
@@ -131,8 +130,8 @@ def ROVTwoPixels(pixelPred, pixelTarg):
 
 
 def calculateROV(preds, true_smb, ignoreSea=True):
-    predictions = torch.tensor(preds)
-    target = torch.tensor(true_smb)
+    predictions = torch.tensor(preds).clone().detach()
+    target = torch.tensor(true_smb).clone().detach()
     ROV = np.empty((predictions.shape[1], predictions.shape[2], 1))
     for i in range(predictions.shape[1]):  # x
         for j in range(predictions.shape[2]):  # y
@@ -160,8 +159,8 @@ calculates RMSE between the timeseries of each pixel (i,j) of prediction and tar
 
 
 def calculateRMSE(preds, true_smb, ignoreSea=True, normalised = True):
-    predictions = torch.tensor(preds)
-    target = torch.tensor(true_smb)
+    predictions = torch.tensor(preds).clone().detach()
+    target = torch.tensor(true_smb).clone().detach()
     max_ = np.max(np.array(true_smb))
     min_ = np.min(np.array(true_smb))
     
@@ -531,7 +530,7 @@ def randomPoints(
         ax.legend()
         i += 2
     plt.suptitle(f"Three time series at different coordinates {time}")
-    
+    plt.tight_layout()
     
 # Bad because division by 0
 def mean_absolute_error(ytrue, ypred):

@@ -44,6 +44,8 @@ def train_net(
 	loss_: str = 'MSE', 
 	typeNet: str = 'Baseline', 
 	ignoreSea: bool = True,
+	nrmse_maxmin: bool = True,
+	earlystopping: int = None,
 ):
 	# 2. Split into train / validation partitions
 	n_val = int(len(dataset) * val_percent)
@@ -99,6 +101,9 @@ def train_net(
 	train_nrmse_e, val_nrmse_e = [], [] # NRMSE per epoch
 	train_mse_e, val_mse_e = [], [] # MSE per epoch
 	
+	best_valScore = 0 # for early stopping
+	earlystopping_counter = 0
+	num_epoch = 0
 	for epoch in range(1, epochs + 1):
 		net.train()
 		epoch_loss = 0
@@ -106,7 +111,7 @@ def train_net(
 			total=n_train, desc=f"Epoch {epoch}/{epochs}", unit="timestep"
 		) as pbar:
 			# MSE, RMSE and NRMSE
-			train_mse, train_rmse, train_nrmse, val_mse, val_rmse, val_nrmse = 0, 0, 0, 0, 0, 0
+			train_mse, train_rmse, train_nrmse, val_mse, val_rmse, val_nrmse, val_loss = 0, 0, 0, 0, 0, 0,0
 			for batch in train_loader:
 				X_train, Z_train, Y_train, R_train = (
 					batch[0],
@@ -132,8 +137,11 @@ def train_net(
 						mse = mse / non_zero_elements
 					
 					rmse = torch.sqrt(mse) # rmse
-					nrmse = (torch.sqrt(mse)/(torch.max(true_smb) - torch.min(true_smb))) # nrmse
-					
+					if nrmse_maxmin: # normalise by (max-min) or by mean of target
+						nrmse = torch.sqrt(mse)/(torch.max(true_smb) - torch.min(true_smb))# nrmse
+					else:
+						nrmse = torch.sqrt(mse)/(torch.nanmean(true_smb)) # nrmse
+						
 					if loss_ == 'NRMSE':
 						loss = nrmse
 					if loss_ == 'MSE':
@@ -170,8 +178,9 @@ def train_net(
 						val_nrmse += val_nrmse_score # nrmse
 						val_mse += val_mse_score # mse
 						
-						# Step of optimizer wrt validation loss
-						scheduler.step(val_score) 
+						val_loss+=val_score # validation loss
+						
+						#scheduler.step(val_score) 
 						
 						# logging.info('Validation MSE loss: {}'.format(val_score))
 						experiment.log(
@@ -188,15 +197,6 @@ def train_net(
 								**histograms,
 							}
 						)
-						
-						
-		if save_checkpoint:
-			Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)
-			torch.save(
-				net.state_dict(),
-				str(dir_checkpoint / "checkpoint_epoch{}.pth".format(epoch)),
-			)
-			logging.info(f"Checkpoint {epoch} saved!")
 			
 		# Train and val loss per epoch for plots:
 		train_rmse_e.append(train_rmse / len(train_loader))	
@@ -207,10 +207,42 @@ def train_net(
 		val_mse_e.append(val_mse / len(val_loader))
 		val_nrmse_e.append(val_nrmse / len(val_loader)) 
 		
+
+		# Save the model with the best validation score
+		mean_val_score = val_loss/len(val_loader)
+		
+		if num_epoch == 0:
+			best_valScore  = mean_val_score
+		
+		# LR scheduler:
+		# Step of optimizer wrt validation loss
+		scheduler.step(mean_val_score) 
+		
+		# Early stoppping
+		if num_epoch > 0:
+			if mean_val_score < best_valScore-(0.05*best_valScore): # if new score not 5% better than best val score
+				if save_checkpoint:
+					Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)
+					torch.save(
+						net.state_dict(),
+						str(dir_checkpoint / "best_model.pth".format(epoch)),
+					)
+				logging.info(f"Checkpoint {epoch} saved!")
+				best_valScore = mean_val_score
+				earlystopping_counter = 0
+						
+			else:
+				if earlystopping is not None:
+					earlystopping_counter += 1
+					if earlystopping_counter >= earlystopping:
+						logging.info(f"Stopping early --> mean val score {mean_val_score} has not decreased over {earlystopping} epochs compared to best {best_valScore} ")
+						break
+		num_epoch+=1
+		
 	# Save final model:
 	Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)
 	today = str(date.today())
-	nameSave = f"MODEL_{today}_{region}_{epochs}_{batch_size}_{typeNet}_{loss_}.pth"
+	nameSave = f"MODEL_{today}_{region}_{num_epoch}_{batch_size}_{typeNet}_{loss_}.pth"
 	# Save locally
 	torch.save(
 		net.state_dict(),
@@ -443,7 +475,9 @@ def trainFlow(
 	randomSplit:bool = True, 
 	loss_: str = 'MSE', 
 	typeNet: str='Baseline',
-	ignoreSea: bool = True
+	ignoreSea: bool = True,
+	nrmse_maxmin: bool = True,
+	earlystopping: int = None,
 ):
 	
 	# start logging
@@ -452,8 +486,8 @@ def trainFlow(
 	logging.info(f"Using device {device}")
 	
 	# Build U-Net
-	n_channels_x = 7
-	n_channels_z = 17
+	n_channels_x = 8
+	n_channels_z = 19
 	size = 32
 	filter = 64
 	
@@ -546,7 +580,9 @@ def trainFlow(
 			region=region,
 			loss_ = loss_, 
 			typeNet = typeNet,
-			ignoreSea = ignoreSea
+			ignoreSea = ignoreSea,
+			nrmse_maxmin = nrmse_maxmin,
+			earlystopping = earlystopping
 		)
 		return train_loss_e, val_loss_e, train_set, test_set, net
 	else:

@@ -9,7 +9,7 @@ from layers import CBAM
 
 class SmaAt_UNet(nn.Module):
 	def __init__(self, n_channels_x, n_channels_z, kernels_per_layer=2, bilinear=False, reduction_ratio=16):
-		super(SmaAt_UNet, self).__init__()
+		super().__init__()
 		self.n_channels_x = n_channels_x
 		self.n_channels_z = n_channels_z
 		self.size = 32

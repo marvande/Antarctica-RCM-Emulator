@@ -9,7 +9,7 @@ __pycache__/
 # data
 data/*
 Stef-scripts/*
-
+*.DS_Store
 # Distribution / packaging
 .Python
 build/
