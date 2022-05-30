@@ -1,3 +1,7 @@
+"""
+Functions to calculate evaluation metrics
+"""
+
 #!/usr/bin/env python3
 import tensorflow as tf
 import xarray as xr
@@ -12,7 +16,14 @@ import pandas as pd
 import math
 from datetime import datetime
 
+
 from dataFunctions import *
+from config import *
+from reproducibility import *
+
+
+# Set seed:
+seed_all(SEED)
 
 """
 calculatePearson: 
@@ -156,9 +167,7 @@ calculates RMSE between the timeseries of each pixel (i,j) of prediction and tar
 - np.array true_smb: truth values of shape (t, x, y)
 @output: 2D matrix where each (i,j) coordinate is the RMSE of the timeseries at this location
 """
-
-
-def calculateRMSE(preds, true_smb, ignoreSea=True, normalised = True):
+def calculateRMSE(preds, true_smb, ignoreSea=True, normalised = True, squared = False):
     predictions = torch.tensor(preds).clone().detach()
     target = torch.tensor(true_smb).clone().detach()
     max_ = np.max(np.array(true_smb))
@@ -178,21 +187,25 @@ def calculateRMSE(preds, true_smb, ignoreSea=True, normalised = True):
                 if not np.any(pixelTarg):  # check if all zeros (then on sea)
                     RMSE[i, j] = np.nan
                 else:
-                    RMSE[i, j] = mean_squared_error(pixelTarg, pixelPred, squared=True)/divident
+                    RMSE[i, j] =  mean_squared_error(y_true = pixelTarg, y_pred = pixelPred, squared=squared)/divident # RMSE if squared False
             else:
-                RMSE[i, j] = mean_squared_error(pixelTarg, pixelPred, squared=True)/divident
+                RMSE[i, j] = mean_squared_error(y_true = pixelTarg, y_pred = pixelPred, squared=squared)/divident
     return RMSE
+
+
+
 
 
 def calculateMetrics(preds, true_smb, target_dataset, train_set, REGION, ignoreSea):
     PearsonCorr = calculatePearson(preds, true_smb, ignoreSea)
     Wasserstein = calculateWasserstein(preds, true_smb, ignoreSea)
     ROV = calculateROV(preds, true_smb, ignoreSea)
-    RMSE = calculateRMSE(preds, true_smb, ignoreSea, normalised = False)
-    NRMSE = calculateRMSE(preds, true_smb, ignoreSea, normalised = True)
+    MSE = calculateRMSE(preds, true_smb, ignoreSea, normalised = False, squared = True)
+    RMSE = calculateRMSE(preds, true_smb, ignoreSea, normalised = False, squared = False)
+    NRMSE = calculateRMSE(preds, true_smb, ignoreSea, normalised = True, squared = False)
     PearsonCorrAn = calculatePearsonAnom(preds, true_smb, target_dataset, train_set, REGION, ignoreSea)
     ROD = calculateROD(true_smb, preds)
-    return PearsonCorr, Wasserstein, ROV, RMSE, NRMSE, PearsonCorrAn, ROD
+    return PearsonCorr, Wasserstein, ROV, MSE, RMSE, NRMSE, PearsonCorrAn, ROD
 
 
 def metricsData(data):
@@ -383,13 +396,13 @@ def plotMetrics(
 ):
     fig = plt.figure(figsize=(20, 10))
     vmin, vmax = np.nanmin(PearsonCorr), np.nanmax(PearsonCorr)
-    ax = plt.subplot(2, 3, 3, projection=ccrs.SouthPolarStereo())
+    ax = plt.subplot(2, 3, 4, projection=ccrs.SouthPolarStereo())
     meanPearson = np.nanmean(PearsonCorr)
     plotPearsonCorr(
         target_dataset, PearsonCorr, meanPearson, ax, vmin, vmax, region=region
     )
     
-    ax = plt.subplot(2, 3, 5, projection=ccrs.SouthPolarStereo())
+    ax = plt.subplot(2, 3, 3, projection=ccrs.SouthPolarStereo())
     vmin, vmax = np.nanmin(Wasserstein), np.nanmax(Wasserstein)
     meanWass = np.nanmean(Wasserstein)
     plotWasserstein(
@@ -405,8 +418,9 @@ def plotMetrics(
     vmin, vmax = np.nanmin(RMSE), np.nanmax(RMSE)
     meanRMSE = np.nanmean(RMSE)
     plotNRMSE(target_dataset, RMSE, meanRMSE, ax, vmin, vmax, region=region)
+    ax.set_title('RMSE mean: {:.2f}'.format(meanRMSE))
     
-    ax = plt.subplot(2, 3, 4, projection=ccrs.SouthPolarStereo())
+    ax = plt.subplot(2, 3, 5, projection=ccrs.SouthPolarStereo())
     vmin, vmax = np.nanmin(PearsonCorrAn), np.nanmax(PearsonCorrAn)
     meanPearsonAn = np.nanmean(PearsonCorrAn)
     plotPearsonCorr(target_dataset, PearsonCorrAn, meanPearsonAn, ax, vmin, vmax, region=region)
@@ -438,13 +452,12 @@ def randomPoints(
     preds_Larsen,
     target_dataset,
     GCMLike,
-    interp_dataset,
-    old_preds,
     train_set,
     region: str,
     N: int=4,
     marker:str="x",
-    figsize = (20,10)
+    figsize = (20,10),
+    preds_Larsen_2 = None # if second model to compare
 ):
     f = plt.figure(figsize=figsize)
     M = int(N/2+1)
@@ -460,7 +473,7 @@ def randomPoints(
         region=region,
     )
     ds = createLowerTarget(target_dataset, region=region, Nx=64, Ny=64, print_=False)
-    dsRCM = createLowerTarget(interp_dataset, region=region, Nx=64, Ny=64, print_=False)
+    #dsRCM = createLowerTarget(interp_dataset, region=region, Nx=64, Ny=64, print_=False)
     
     
     randTime = rn.randint(0, len(true_smb_Larsen) - 1)
@@ -497,22 +510,30 @@ def randomPoints(
     # Plot timeseries
     p = points[0]
     randomPixel_pred = np.array(preds_Larsen)[:, p["y"], p["x"], 0]
-    randomPixel_old_pred = np.array(old_preds)[:, p["y"], p["x"], 0]
+
+    #randomPixel_old_pred = np.array(old_preds)[:, p["y"], p["x"], 0]
     randomPixel_targ = np.array(true_smb_Larsen)[:, p["y"], p["x"], 0]
-    randomPixel_inter = dsRCM.SMB.values[len(train_set) :, p["y"], p["x"]]
+    #randomPixel_inter = dsRCM.SMB.values[len(train_set) :, p["y"], p["x"]]
     
     df = pd.DataFrame(
-        data={"pred": randomPixel_pred, "target": randomPixel_targ, 'I-SMB':randomPixel_inter, 'w/o ER':randomPixel_old_pred},
+        data={"pred": randomPixel_pred, "target": randomPixel_targ},
         index=target_dataset.time.values[len(train_set) :],
     )
+    
     ax5 = plt.subplot(M, 4, (5, 6))
     ax5.plot(df["target"], label="RCM Truth", color="blue", alpha=0.5)
     ax5.plot(df["pred"], label="Emulator", color="red", linestyle="--")
-    ax5.plot(df["w/o ER"], label="Emulator w/o ER", color="green", linestyle="--")
+    
+    if preds_Larsen_2 != None:
+        randomPixel_pred_2 = np.array(preds_Larsen_2)[:, p["y"], p["x"], 0]
+        df['predictions MSE'] = randomPixel_pred_2
+        ax5.plot(df["predictions MSE"], label="Emulator-MSE", color="green", linestyle="--")
+        
+    #ax5.plot(df["w/o ER"], label="Emulator w/o ER", color="green", linestyle="--")
     #df["I-SMB"].plot(label="I-SMB", color="green", linestyle="--", ax = ax5)
     ax5.legend()
     pearson = np.corrcoef(df["pred"], df["target"])[0, 1]
-    rmse = math.sqrt(mean_squared_error(df["pred"], df["target"]))
+    rmse = mean_squared_error(y_pred = df["pred"], y_true = df["target"], squared = False)
     nrmse = rmse/(df["target"].max()- df["target"].min())
     ax5.set_title("Point:{}, pearson:{:.2f}, rmse:{:.2f}, nrmse:{:.2f}".format(p, pearson, rmse, nrmse))
     
@@ -520,21 +541,28 @@ def randomPoints(
     for p in points[1:]:
         randomPixel_pred = np.array(preds_Larsen)[:, p["y"], p["x"], 0]
         randomPixel_targ = np.array(true_smb_Larsen)[:, p["y"], p["x"], 0]
-        randomPixel_old_pred = np.array(old_preds)[:, p["y"], p["x"], 0]
-        randomPixel_inter = dsRCM.SMB.values[len(train_set) :, p["y"], p["x"]]
+        #randomPixel_inter = dsRCM.SMB.values[len(train_set) :, p["y"], p["x"]]
         
         df = pd.DataFrame(
-            data={"pred": randomPixel_pred, "target": randomPixel_targ, 'I-SMB':randomPixel_inter, 'w/o ER':randomPixel_old_pred},
+            data={"pred": randomPixel_pred, "target": randomPixel_targ},
             index=target_dataset.time.values[len(train_set) :],
         )
+        
+            
         # ax = plt.subplot(2, 3, i, sharey=ax5)
         ax = plt.subplot(M, 4, (i, i+1))
         df["target"].plot(label="RCM Truth", color="blue", alpha=0.5, ax = ax)
         df["pred"].plot(label="Emulator", color="red", linestyle="--", ax = ax)
+        
+        if preds_Larsen_2 != None:
+            randomPixel_pred_2 = np.array(preds_Larsen_2)[:, p["y"], p["x"], 0]
+            df['predictions MSE'] = randomPixel_pred_2
+            df["predictions MSE"].plot(label="Emulator-MSE", color="green", linestyle="--", ax = ax)
+            
         #df["I-SMB"].plot(label="I-SMB", color="green", linestyle="--", ax = ax)
-        df["w/o ER"].plot(label="Emulator w/o ER", color="green", linestyle="--", ax = ax)
+        #df["w/o ER"].plot(label="Emulator w/o ER", color="green", linestyle="--", ax = ax)
         pearson = np.corrcoef(df["pred"], df["target"])[0, 1]
-        rmse = math.sqrt(mean_squared_error(df["pred"], df["target"]))
+        rmse = mean_squared_error(y_true = df["target"], y_pred = df["pred"], squared = False)
         nrmse = rmse/(df["target"].max()- df["target"].min())
         ax.set_title("Point:{}, pearson:{:.2f}, rmse:{:.2f}, nrmse:{:.2f}".format(p, pearson, rmse, nrmse))
         ax.legend()
@@ -645,7 +673,7 @@ def plotGCMTimeseries(true_smb_Larsen, preds_Larsen, GCMLike, PearsonCorr, targe
         ax2.axhline(np.mean(df["target"]), color = 'blue', alpha=0.3, linestyle="--")
         ax2.axhline(np.mean(df["pred"]), color = 'red', alpha=0.3, linestyle="--")
         pearson = np.corrcoef(df["pred"], df["target"])[0, 1]
-        rmse = math.sqrt(mean_squared_error(df["pred"], df["target"]))
+        rmse = mean_squared_error(y_true = df["target"], y_pred = df["pred"], squared = False)
         nrmse = rmse/(df["target"].max()- df["target"].min())
         ax2.set_title("Point:{}, pearson:{:.2f}, rmse:{:.2f}, nrmse:{:.2f}".format(p_RCM, pearson, rmse, nrmse))
         ax2.legend()
@@ -874,7 +902,7 @@ def randomPoints_Losses(
     df["pred_NRMSE"].plot(label="NRMSE",  linestyle="--", ax=ax5)
     ax5.legend()
     pearson = np.corrcoef(df["pred_MSE"], df["target"])[0, 1]
-    rmse = math.sqrt(mean_squared_error(df["pred_MSE"], df["target"]))
+    rmse = mean_squared_error(y_true = df["target"], y_pred = df["pred_MSE"], squared = False)
     nrmse = rmse / (df["target"].max() - df["target"].min())
     ax5.set_title(
         "Point:{}, pearson:{:.2f}, rmse:{:.2f}, nrmse:{:.2f}".format(
@@ -904,7 +932,7 @@ def randomPoints_Losses(
         df["pred_RMSE"].plot(label="RMSE",  linestyle="--", ax=ax)
         df["pred_NRMSE"].plot(label="NRMSE", linestyle="--", ax=ax)
         pearson = np.corrcoef(df["pred_MSE"], df["target"])[0, 1]
-        rmse = math.sqrt(mean_squared_error(df["pred_MSE"], df["target"]))
+        rmse = mean_squared_error(y_true = df["target"], y_pred = df["pred_MSE"], squared = False)
         nrmse = rmse / (df["target"].max() - df["target"].min())
         ax.set_title(
             "Point:{}, pearson:{:.2f}, rmse:{:.2f}, nrmse:{:.2f}".format(
@@ -1003,18 +1031,17 @@ def plotRandomPrediction(preds, x, z, true_smb, r,
     clb = fig.colorbar(im, ax=[ax1,ax2,ax3, ax4], location='bottom')
     clb.ax.set_title('SMB [mmWe/day]')
     
-def plotTimeseries(preds, true_smb, train_set,interp_dataset, target_dataset, points_RCM, region, N):
+def plotTimeseries(preds, true_smb, train_set, target_dataset, points_RCM, region, N):
     dsRCM = createLowerTarget(
-                interp_dataset, region=region, Nx=64, Ny=64, print_=False
+                target_dataset, region=region, Nx=64, Ny=64, print_=False
             )
     # Plot timeseries
     fig = plt.figure(figsize=(15, 10))
     p = points_RCM[0]
     randomPixel_pred = np.array(preds)[:, p["y"], p["x"], 0]
     randomPixel_targ = np.array(true_smb)[:, p["y"], p["x"], 0]
-    randomPixel_inter = dsRCM.SMB.values[len(train_set) :, p["y"], p["x"]]
     df = pd.DataFrame(
-        data={"pred": randomPixel_pred, "target": randomPixel_targ, 'I-SMB':randomPixel_inter},
+        data={"pred": randomPixel_pred, "target": randomPixel_targ},
         index=target_dataset.time.values[len(train_set) :],
     )
     
@@ -1022,10 +1049,9 @@ def plotTimeseries(preds, true_smb, train_set,interp_dataset, target_dataset, po
     ax5 = plt.subplot(M, 4, (1, 2))
     ax5.plot(df["target"], label="target", color="blue", alpha=0.5)
     ax5.plot(df["pred"], label="prediction", color="red", linestyle="--")
-    #df["I-SMB"].plot(label="I-SMB", color="green", linestyle="--", ax = ax5)
     ax5.legend()
     pearson = np.corrcoef(df["pred"], df["target"])[0, 1]
-    rmse = math.sqrt(mean_squared_error(df["pred"], df["target"]))
+    rmse =  mean_squared_error(y_true = df["target"], y_pred = df["pred"], squared = False)
     nrmse = rmse/(df["target"].max()- df["target"].min())
     ax5.set_title("Point:{}, pearson:{:.2f}, rmse:{:.2f}, nrmse:{:.2f}".format(p, pearson, rmse, nrmse))
     
@@ -1033,20 +1059,82 @@ def plotTimeseries(preds, true_smb, train_set,interp_dataset, target_dataset, po
     for p in points_RCM[1:]:
         randomPixel_pred = np.array(preds)[:, p["y"], p["x"], 0]
         randomPixel_targ = np.array(true_smb)[:, p["y"], p["x"], 0]
-        randomPixel_inter = dsRCM.SMB.values[len(train_set) :, p["y"], p["x"]]
         df = pd.DataFrame(
-            data={"pred": randomPixel_pred, "target": randomPixel_targ, 'I-SMB':randomPixel_inter},
+            data={"pred": randomPixel_pred, "target": randomPixel_targ},
             index=target_dataset.time.values[len(train_set) :],
         )
         # ax = plt.subplot(2, 3, i, sharey=ax5)
         ax = plt.subplot(M, 4, (i, i+1))
         df["target"].plot(label="RCM Truth", color="blue", alpha=0.5, ax = ax)
         df["pred"].plot(label="Emulator", color="red", linestyle="--", ax = ax)
-        #df["I-SMB"].plot(label="I-SMB", color="green", linestyle="--", ax = ax)
         pearson = np.corrcoef(df["pred"], df["target"])[0, 1]
-        rmse = math.sqrt(mean_squared_error(df["pred"], df["target"]))
+        rmse = mean_squared_error(y_true = df["target"], y_pred = df["pred"], squared = False)
         nrmse = rmse/(df["target"].max()- df["target"].min())
         ax.set_title("Point:{}, pearson:{:.2f}, rmse:{:.2f}, nrmse:{:.2f}".format(p, pearson, rmse, nrmse))
         ax.legend()
         plt.tight_layout()
         i += 2
+        
+        
+        
+def ComparMetrics(
+    PearsonCorr,
+    Wasserstein,
+    RMSE,
+    PearsonCorrAn, 
+    target_dataset,
+    models,
+    region: str):
+    fig = plt.figure(figsize=(20, 10))
+    
+    # Correlation
+    vmin, vmax = np.nanmin([PearsonCorr[0],PearsonCorr[1]]), np.nanmax([PearsonCorr[0],PearsonCorr[1]])
+    ax = plt.subplot(2, 4, 1, projection=ccrs.SouthPolarStereo())
+    plotPearsonCorr(
+        target_dataset, PearsonCorr[0], np.nanmean(PearsonCorr[0]), ax, vmin, vmax, region=region
+    )
+    ax.set_title("[{}] Correlation, mean:{:.2f}".format(models[0], np.nanmean(PearsonCorr[0])))
+    ax = plt.subplot(2, 4, 2, projection=ccrs.SouthPolarStereo())
+    plotPearsonCorr(
+        target_dataset, PearsonCorr[1], np.nanmean(PearsonCorr[1]), ax, vmin, vmax, region=region
+    )
+    ax.set_title("[{}] Correlation, mean:{:.2f}".format(models[1], np.nanmean(PearsonCorr[1])))
+    
+    # Correlation without seasonality:
+    vmin, vmax = np.nanmin([PearsonCorrAn[0],PearsonCorrAn[1]]), np.nanmax([PearsonCorrAn[0],PearsonCorrAn[1]])
+    ax = plt.subplot(2, 4, 3, projection=ccrs.SouthPolarStereo())
+    plotPearsonCorr(
+        target_dataset, PearsonCorrAn[0], np.nanmean(PearsonCorrAn[0]), ax, vmin, vmax, region=region
+    )
+    ax.set_title("[{}] Corr w/o s, mean:{:.2f}".format(models[0], np.nanmean(PearsonCorrAn[0])))
+    ax = plt.subplot(2, 4, 4, projection=ccrs.SouthPolarStereo())
+    plotPearsonCorr(
+        target_dataset, PearsonCorrAn[1], np.nanmean(PearsonCorrAn[1]), ax, vmin, vmax, region=region
+    )
+    ax.set_title("[{}] Corr w/o s, mean:{:.2f}".format(models[1], np.nanmean(PearsonCorrAn[1])))
+    
+    # Wasserstein:
+    vmin, vmax = np.nanmin([Wasserstein[0],Wasserstein[1]]), np.nanmax([Wasserstein[0],Wasserstein[1]])
+    ax = plt.subplot(2, 4, 5, projection=ccrs.SouthPolarStereo())
+    plotWasserstein(
+        target_dataset, Wasserstein[0], np.nanmean(Wasserstein[0]), ax, vmin, vmax, region=region
+    )
+    ax.set_title("[{}] Wasserstein, mean:{:.2f}".format(models[0], np.nanmean(Wasserstein[0])))
+    ax = plt.subplot(2, 4, 6, projection=ccrs.SouthPolarStereo())
+    plotWasserstein(
+        target_dataset, Wasserstein[1], np.nanmean(Wasserstein[1]), ax, vmin, vmax, region=region
+    )
+    ax.set_title("[{}] Wasserstein, mean:{:.2f}".format(models[1], np.nanmean(Wasserstein[1])))
+    
+    # RMSE:
+    vmin, vmax = np.nanmin([RMSE[0],RMSE[1]]), np.nanmax([RMSE[0],RMSE[1]])
+    ax = plt.subplot(2, 4, 7, projection=ccrs.SouthPolarStereo())
+    plotNRMSE(
+        target_dataset, RMSE[0], np.nanmean(RMSE[0]), ax, vmin, vmax, region=region
+    )
+    ax.set_title("[{}] Wasserstein, mean:{:.2f}".format(models[0], np.nanmean(RMSE[0])))
+    ax = plt.subplot(2, 4, 8, projection=ccrs.SouthPolarStereo())
+    plotNRMSE(
+        target_dataset, RMSE[1], np.nanmean(RMSE[1]), ax, vmin, vmax, region=region
+    )
+    ax.set_title("[{}] RMSE, mean:{:.2f}".format(models[1], np.nanmean(RMSE[1])))

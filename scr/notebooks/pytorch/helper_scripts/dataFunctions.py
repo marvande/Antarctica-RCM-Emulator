@@ -1,9 +1,15 @@
+"""
+Functions that handle data and masks
+"""
+
+
 import tensorflow as tf 
 import xarray as xr
 import cartopy.crs as ccrs
 from scipy.stats import wasserstein_distance
 import torch
 import numpy as np 
+from matplotlib import pyplot as plt
 
 
 """
@@ -16,7 +22,7 @@ def plotAllVar(
     name: str = "GCM",  # name of dataset plotted, for title
     time: int = 0,
 ):  # time step that should be plotted
-    vars_ = list(GCM_xy.data_vars)
+    vars_ = sorted(list(GCM_xy.data_vars))
     coords = list(GCM_xy.coords)
     f = plt.figure(figsize=(20, 10))
     map_proj = ccrs.SouthPolarStereo(central_longitude=0.0, globe=None)
@@ -31,6 +37,46 @@ def plotAllVar(
         ax.set_title(f"{GCM_xy[var].long_name} ({var})")
     plt.suptitle(f"First time step {GCM_xy.time[0].values} of {name}")
     
+
+"""
+plotAllVar: plots all variables in a xr.Dataset
+"""
+def plotAllVar2Xr(
+    GCM_xy,  # xr.Dataset
+    GCM_xy2,
+    m: int = 7,  # number of rows in plot
+    n: int = 2,  # number of columns in plot
+    name: str = "GCM",  # name of dataset plotted, for title
+    time: int = 0,
+):  # time step that should be plotted
+    vars_ = sorted(list(GCM_xy.data_vars))
+    coords = list(GCM_xy.coords)
+    f = plt.figure(figsize=(20, 20))
+    map_proj = ccrs.SouthPolarStereo(central_longitude=0.0, globe=None)
+    
+    k = 1
+    for i in range(len(vars_)):
+        var = vars_[i]
+        ax = plt.subplot(m, n, k, projection=ccrs.SouthPolarStereo())
+        max = np.max([np.nanmax(GCM_xy[var].isel(time=time).values), np.nanmax(GCM_xy2[var].isel(time=time).values)])
+        min = np.min([np.nanmin(GCM_xy[var].isel(time=time).values), np.nanmin(GCM_xy2[var].isel(time=time).values)])
+        
+        GCM_xy[var].isel(time=time).plot(
+            ax=ax, x="x", y="y", vmin = min, vmax = max, transform=ccrs.SouthPolarStereo(), add_colorbar=True
+        )
+        ax.coastlines("10m", color="black")
+        ax.gridlines()
+        ax.set_title(f"{GCM_xy[var].long_name} GCMLike ({var})")
+        k+=1
+        ax = plt.subplot(m, n, k, projection=ccrs.SouthPolarStereo())
+        GCM_xy2[var].isel(time=time).plot(
+            ax=ax, x="x", y="y", vmin = min, vmax = max, transform=ccrs.SouthPolarStereo(), add_colorbar=True
+        )
+        ax.coastlines("10m", color="black")
+        ax.gridlines()
+        ax.set_title(f"{GCM_xy2[var].long_name} GCM ({var})")
+        k+=1
+    plt.suptitle(f"First time step {GCM_xy.time[0].values} of {name}")
     
 """
 resize: resizes an image to another size

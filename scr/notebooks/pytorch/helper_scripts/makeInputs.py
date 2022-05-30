@@ -1,3 +1,6 @@
+"""
+Functions that create inputs for model
+"""
 #!/usr/bin/env python3
 from dataFunctions import *
 from config import *
@@ -5,6 +8,7 @@ from math import cos,sin,pi
 
 def input_maker(
 	GCMLike,
+	GCM = None,
 	size_input_domain:int=16,  # size of domain, format: 8,16,32, must be defined in advance
 	stand:bool=True,  # standardization
 	seas:bool=True,  # put a cos, sin vector to control the season, format : bool
@@ -12,33 +16,40 @@ def input_maker(
 	stds:bool=True,  # add the std of the variables raw or stdz, format : bool
 	resize_input:bool=True,  # resize input to size_input_domain
 	region:str="Larsen",  # region of interest
-	regionNbr:int=0, # number of region of interest
 	print_:bool=True,
-	reg:bool = True # encoding of region
+	dropvar = None,
 ):
 	
-	if region != "Whole Antarctica":
-		DATASET = createLowerInput(GCMLike, region=region, Nx=48, Ny=25, print_=False)
-	else:
-		DATASET = GCMLike
+	DATASET = createLowerInput(GCMLike, region=region, Nx=48, Ny=25, print_=False) # GCMLike
+	if GCM != None:
+		DATASETGCM = createLowerInput(GCM, region=region, Nx=48, Ny=25, print_=False) # GCM
+
 	"""
 	MAKE THE 2D INPUT ARRAY
 	SHAPE [nbmonths, x, y, nb_vars]
 	"""
-		
-	# Remove target variable from DATASET:
+	# Remove target variable from DATASET for GCMLike:
 	DATASET = DATASET.drop(["SMB"])
 	
+	if dropvar != None: # drop additional variables if needed
+		DATASET = DATASET.drop(dropvar)
+		if GCM != None:
+			DATASETGCM = DATASETGCM.drop(dropvar)
+		
 	nbmonths = DATASET.dims["time"]
 	x = DATASET.dims["x"]
 	y = DATASET.dims["y"]
 	nb_vars = len(list(DATASET.data_vars))
-	VAR_LIST = list(DATASET.data_vars)
+	VAR_LIST = sorted(list(DATASET.data_vars)) # sort variables alphabetically
+	print('Variables:', VAR_LIST)
 	
 	INPUT_2D_bf = np.transpose(
 		np.asarray([DATASET[i].values for i in VAR_LIST]), [1, 2, 3, 0]
 	)
-	
+	if GCM != None:
+		INPUT_2D_bf_GCM = np.transpose(
+			np.asarray([DATASETGCM[i].values for i in VAR_LIST]), [1, 2, 3, 0]
+		)
 	# if no size is given, take smallest power of 2
 	if size_input_domain == None:
 		size_input_domain = np.max(
@@ -51,16 +62,27 @@ def input_maker(
 	if resize_input:
 		# resize to size_input_domain
 		INPUT_2D = resize(INPUT_2D_bf, size_input_domain, size_input_domain, print_)
+		if GCM != None:
+			INPUT_2D_GCM = resize(INPUT_2D_bf_GCM, size_input_domain, size_input_domain, print_)
 	else:
 		INPUT_2D = INPUT_2D_bf
+		if GCM != None:
+			INPUT_2D_GCM = INPUT_2D_bf_GCM
 		
 	if stand:
-		# Standardize:
-		INPUT_2D_SDTZ = standardize(INPUT_2D)
-		# in their code with aerosols extra stuff but ignore
+		# Standardize GCMLike:
+		INPUT_2D_SDTZ = standardize(INPUT_2D, mean = None, std = None, ownstd = True)
 		INPUT_2D_ARRAY = INPUT_2D_SDTZ
+		if GCM != None:
+			# standardize GCM according to RCM values
+			mean = np.nanmean(INPUT_2D, axis=(1, 2), keepdims=True)
+			std = np.nanstd(INPUT_2D, axis=(1, 2), keepdims=True)
+			INPUT_2D_SDTZ_GCM = standardize(INPUT_2D_GCM, mean=mean, std=std, ownstd = False) # standardise according to GCMLike values
+			INPUT_2D_ARRAY_GCM = INPUT_2D_SDTZ_GCM
 	else:
 		INPUT_2D_ARRAY = INPUT_2D
+		if GCM != None:
+			INPUT_2D_ARRAY_GCM = INPUT_2D_GCM
 		
 	if print_:
 		print("Parameters:\n -------------------")
@@ -106,27 +128,31 @@ def input_maker(
 		INPUT_1D.append(sinvect)
 		if print_:
 			print(f"Cos/sin encoding shape: {cosvect.shape}")
-	# add a en encoding of the current region number to Z
-	if reg: 
-		regvect = np.array([regionNbr for i in range(INPUT_2D.shape[0])])
-		regvect = cosvect.reshape(INPUT_2D.shape[0], 1, 1, 1)
-		INPUT_1D.append(regvect)
 		
 	INPUT_1D_ARRAY = np.concatenate(INPUT_1D, axis=3)
 	if print_:
 		print(f"INPUT_1D shape: {INPUT_1D_ARRAY.shape}")
 		
 	DATASET.close()
-	return INPUT_2D_ARRAY, INPUT_1D_ARRAY, VAR_LIST
+	if GCM != None:
+		print('Return input of GCM')
+		DATASETGCM.close()
+		return INPUT_2D_ARRAY_GCM, INPUT_1D_ARRAY, VAR_LIST
+	else:
+		print('Return input of GCMLike')
+		return INPUT_2D_ARRAY, INPUT_1D_ARRAY, VAR_LIST
 
 
 def make_inputs(GCMLike, 
+				GCM,
 				size_input_domain:int, 
 				Region:str, 
-				regionNbr:int=0): # for combined regions, each sample gets a number so that we know to which region it corresponds
+				dropvar
+			): # for combined regions, each sample gets a number so that we know to which region it corresponds
 	# Make input
 	i2D, i1D, VAR_LIST = input_maker(
 		GCMLike=GCMLike,
+		GCM = GCM,
 		size_input_domain=size_input_domain,
 		stand=True,  # standardization
 		seas=True,  # put a cos,sin vector to control the season, format : bool
@@ -134,14 +160,14 @@ def make_inputs(GCMLike,
 		stds=True,
 		resize_input=True,
 		region=Region,
-		regionNbr=regionNbr,
 		print_=False,
-		reg = True
+		dropvar = dropvar, # variables to drop if necessary
 	)
 	
 	# Make a non standardised version for plots:
 	i2D_ns, i1D_ns, var_list = input_maker(
 		GCMLike=GCMLike,
+		GCM = GCM,
 		size_input_domain=size_input_domain,
 		stand=False,  # standardization
 		seas=True,  # put a cos,sin vector to control the season, format : bool
@@ -149,9 +175,8 @@ def make_inputs(GCMLike,
 		stds=True,
 		resize_input=False,
 		region=Region,
-		regionNbr=regionNbr,
 		print_=False,
-		reg = True
+		dropvar = dropvar,
 	)
 	return i1D, i2D, i1D_ns, i2D_ns, VAR_LIST
 
@@ -165,14 +190,11 @@ def target_maker(
 	target_times = []
 	targets = []
 	
-	if region != "Whole antarctica":
-		lowerTarget = createLowerTarget(
+	lowerTarget = createLowerTarget(
 			target_dataset, region=region, Nx=64, Ny=64, print_=False
 		)
-		targetArray = lowerTarget.SMB.values
-	else:
-		targetArray = target_dataset.SMB.values
-		
+	targetArray = lowerTarget.SMB.values
+
 	targetArray = targetArray.reshape(
 		targetArray.shape[0], targetArray.shape[1], targetArray.shape[2], 1
 	)
@@ -215,15 +237,15 @@ def regionEncoder(X, region = REGION, regions=REGIONS):
 	return R
 
 
-
 """standardize: standardises data array by substracting mean and dividing by std
 """
-def standardize(data):
+def standardize(data, mean = None, std = None, ownstd = True):
 	import numpy as np
-	
-	mean = np.nanmean(data, axis=(1, 2), keepdims=True)
-	sd = np.nanstd(data, axis=(1, 2), keepdims=True)
-	ndata = (data - mean) / sd
+
+	if ownstd:
+		mean = np.nanmean(data, axis=(1, 2), keepdims=True)
+		std = np.nanstd(data, axis=(1, 2), keepdims=True)
+	ndata = (data - mean) / std
 	return ndata
 
 

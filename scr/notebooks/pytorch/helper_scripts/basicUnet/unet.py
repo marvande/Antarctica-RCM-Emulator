@@ -2,7 +2,6 @@
 # Source UNet: https://github.com/milesial/Pytorch-UNet
 from unet_parts import *
 
-
 class UNetBaseline(nn.Module):
     def __init__(
         self, n_channels_x=7, n_channels_z=16, size=32, filter=64, bilinear=False

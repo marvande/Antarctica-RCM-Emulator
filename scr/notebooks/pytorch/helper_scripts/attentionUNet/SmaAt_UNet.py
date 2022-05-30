@@ -45,8 +45,8 @@ class SmaAt_UNet(nn.Module):
 		self.up3 = UpDS(512, 256 // factor, self.bilinear, kernels_per_layer=kernels_per_layer)
 		self.up4 = UpDS(256, 128 // factor, self.bilinear, kernels_per_layer=kernels_per_layer)
 		self.up5 = UpDS(128, 64, self.bilinear, kernels_per_layer=kernels_per_layer)
-		
 		self.up6 = UpDS(64, 32, self.bilinear, kernels_per_layer=kernels_per_layer)
+		
 		self.up7 = UpLastConv(32, 32, 16, self.bilinear)
 		
 		# self last layer:
