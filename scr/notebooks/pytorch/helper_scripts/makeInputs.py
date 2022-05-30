@@ -10,7 +10,8 @@ def input_maker(
 	GCMLike,
 	GCM = None,
 	size_input_domain:int=16,  # size of domain, format: 8,16,32, must be defined in advance
-	stand:bool=True,  # standardization
+	stand:bool=True,  # standardization of X
+	standZ:bool = True, # standardization of Z
 	seas:bool=True,  # put a cos, sin vector to control the season, format : bool
 	means:bool=True,  # add the mean of the variables raw or stdz, format : bool
 	stds:bool=True,  # add the std of the variables raw or stdz, format : bool
@@ -103,9 +104,34 @@ def input_maker(
 	if means and stds:
 		vect_std = INPUT_2D.std(axis=(1, 2))
 		vect_means = INPUT_2D.mean(axis=(1, 2))
+		
 		SpatialMean = vect_means.reshape(INPUT_2D.shape[0], 1, 1, INPUT_2D.shape[3])
 		SpatialSTD = vect_std.reshape(INPUT_2D.shape[0], 1, 1, INPUT_2D.shape[3])
-		
+				
+		if standZ:
+			refmean = INPUT_2D.mean(axis = 0) # mean over time
+			refstd = INPUT_2D.std(axis = 0) # std over time
+			
+			REF_DATASET = DATASET.sel(time = slice('1980','2000'))
+			REF_ARRAY = np.transpose(
+				np.asarray([REF_DATASET[i].values for i in VAR_LIST]), [1, 2, 3, 0]
+			)
+			
+			# standardize mean
+			ref_means=REF_ARRAY.mean(axis=(1,2))  
+			ref_means_mean=ref_means.mean(axis=0)
+			ref_means_std=ref_means.std(axis=0)
+			vect_means_stdz = (vect_means - ref_means_mean)/ref_means_std
+			
+			# standardize std
+			ref_stds=REF_ARRAY.std(axis=(1,2))  
+			ref_stds_mean=ref_stds.mean(axis=0)
+			ref_stds_std=ref_stds.std(axis=0)
+			vect_std_stdz = (vect_std -ref_stds_mean)/ref_stds_std
+			
+			SpatialMean = vect_means_stdz.reshape(INPUT_2D.shape[0], 1, 1, INPUT_2D.shape[3])
+			SpatialSTD = vect_std_stdz.reshape(INPUT_2D.shape[0], 1, 1, INPUT_2D.shape[3])
+			
 		INPUT_1D.append(SpatialMean)
 		INPUT_1D.append(SpatialSTD)
 		if print_:
@@ -155,6 +181,7 @@ def make_inputs(GCMLike,
 		GCM = GCM,
 		size_input_domain=size_input_domain,
 		stand=True,  # standardization
+		standZ = True,
 		seas=True,  # put a cos,sin vector to control the season, format : bool
 		means=True,  # add the mean of the variables raw or stdz, format : r,s,n
 		stds=True,
@@ -170,6 +197,7 @@ def make_inputs(GCMLike,
 		GCM = GCM,
 		size_input_domain=size_input_domain,
 		stand=False,  # standardization
+		standZ = True,
 		seas=True,  # put a cos,sin vector to control the season, format : bool
 		means=True,  # add the mean of the variables raw or stdz, format : r,s,n
 		stds=True,

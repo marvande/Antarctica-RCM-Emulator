@@ -9,6 +9,7 @@ import cartopy.crs as ccrs
 from scipy.stats import wasserstein_distance
 import torch
 import numpy as np 
+import pandas as pd
 from matplotlib import pyplot as plt
 
 
@@ -20,22 +21,26 @@ def plotAllVar(
     m: int = 3,  # number of rows in plot
     n: int = 3,  # number of columns in plot
     name: str = "GCM",  # name of dataset plotted, for title
-    time: int = 0,
+    randTime: int = 0,
 ):  # time step that should be plotted
+    
+    dt = pd.to_datetime([GCM_xy.time.isel(time=randTime).values])
+    time = str(dt.date[0])
+    f = plt.figure(figsize=(15, 10))
+    
     vars_ = sorted(list(GCM_xy.data_vars))
     coords = list(GCM_xy.coords)
-    f = plt.figure(figsize=(20, 10))
     map_proj = ccrs.SouthPolarStereo(central_longitude=0.0, globe=None)
     for i in range(len(vars_)):
         var = vars_[i]
         ax = plt.subplot(m, n, i + 1, projection=ccrs.SouthPolarStereo())
-        GCM_xy[var].isel(time=time).plot(
+        GCM_xy[var].isel(time=randTime).plot(
             ax=ax, x="x", y="y", transform=ccrs.SouthPolarStereo(), add_colorbar=True
         )
         ax.coastlines("10m", color="black")
         ax.gridlines()
         ax.set_title(f"{GCM_xy[var].long_name} ({var})")
-    plt.suptitle(f"First time step {GCM_xy.time[0].values} of {name}")
+    plt.suptitle(f"{time} of {name}")
     
 
 """
@@ -181,6 +186,7 @@ def plotTarget(
     vmin,  # min value of prediction and target, for shared colorbar
     vmax,  # max value of prediction and target, for shared colorbar
     region="Whole Antarctica",  # region
+    colorbar:bool = False
 ):
     if region != "Whole Antarctica":
         ds = createLowerTarget(
@@ -198,7 +204,7 @@ def plotTarget(
         ax=ax,
         x="x",
         transform=ccrs.SouthPolarStereo(),
-        add_colorbar=False,
+        add_colorbar=colorbar,
         cmap="RdYlBu_r",
         vmin=vmin,
         vmax=vmax,

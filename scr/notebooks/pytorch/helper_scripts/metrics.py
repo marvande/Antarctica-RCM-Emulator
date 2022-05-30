@@ -1031,7 +1031,7 @@ def plotRandomPrediction(preds, x, z, true_smb, r,
     clb = fig.colorbar(im, ax=[ax1,ax2,ax3, ax4], location='bottom')
     clb.ax.set_title('SMB [mmWe/day]')
     
-def plotTimeseries(preds, true_smb, train_set, target_dataset, points_RCM, region, N):
+def plotTimeseries(preds, true_smb, train_set, target_dataset, points_RCM, region, N, rollingMean = None):
     dsRCM = createLowerTarget(
                 target_dataset, region=region, Nx=64, Ny=64, print_=False
             )
@@ -1047,8 +1047,13 @@ def plotTimeseries(preds, true_smb, train_set, target_dataset, points_RCM, regio
     
     M = int(N/2+1)
     ax5 = plt.subplot(M, 4, (1, 2))
-    ax5.plot(df["target"], label="target", color="blue", alpha=0.5)
-    ax5.plot(df["pred"], label="prediction", color="red", linestyle="--")
+    ax5.plot(df["target"], label="target", color="grey", alpha=0.8)
+    ax5.plot(df["pred"], label="prediction", color="red")
+    
+    if rollingMean != None:
+        ax5.plot(df["target"].rolling(rollingMean).mean(), label="target-mean",  linestyle="--", color="green", alpha=0.5)
+        ax5.plot(df["pred"].rolling(rollingMean).mean(), label="pred-mean",  linestyle="--", color="orange", alpha=0.5)
+        
     ax5.legend()
     pearson = np.corrcoef(df["pred"], df["target"])[0, 1]
     rmse =  mean_squared_error(y_true = df["target"], y_pred = df["pred"], squared = False)
@@ -1065,8 +1070,13 @@ def plotTimeseries(preds, true_smb, train_set, target_dataset, points_RCM, regio
         )
         # ax = plt.subplot(2, 3, i, sharey=ax5)
         ax = plt.subplot(M, 4, (i, i+1))
-        df["target"].plot(label="RCM Truth", color="blue", alpha=0.5, ax = ax)
-        df["pred"].plot(label="Emulator", color="red", linestyle="--", ax = ax)
+        df["target"].plot(label="RCM Truth", color="grey", alpha=0.8, ax = ax)
+        df["pred"].plot(label="Emulator", color="red", ax = ax)
+        
+        if rollingMean != None:
+            df["target"].rolling(rollingMean).mean().plot(label="target-mean",  linestyle="--", color="green", alpha=0.5, ax = ax)
+            df["target"].rolling(rollingMean).mean().plot(label="pred-mean",  linestyle="--", color="orange", alpha=0.5, ax = ax)
+            
         pearson = np.corrcoef(df["pred"], df["target"])[0, 1]
         rmse = mean_squared_error(y_true = df["target"], y_pred = df["pred"], squared = False)
         nrmse = rmse/(df["target"].max()- df["target"].min())
