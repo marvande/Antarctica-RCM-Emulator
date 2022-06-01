@@ -58,13 +58,6 @@ def ProcessRCMVar(var, RCM):
         RCM = RCM.drop_dims(['ATMLAY'])
         RCM = RCM.drop(['TIME_bnds'])
         return RCM
-    """
-    if var == 'UUP':
-        RCM = RCM.isel(PLEV=0).drop(['TIME_bnds','PLEV_bnds'])
-        return RCM
-    if var == 'VVP':
-        RCM = RCM.isel(PLEV=0).drop(['TIME_bnds','PLEV_bnds'])
-        return RCM"""
     if var == 'UUP':
         RCM = RCM.drop(['TIME_bnds','PLEV_bnds'])
         return RCM
