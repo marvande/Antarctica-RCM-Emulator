@@ -22,11 +22,12 @@ def plotAllVar(
     n: int = 3,  # number of columns in plot
     name: str = "GCM",  # name of dataset plotted, for title
     randTime: int = 0,
+    figsize = (15, 10)
 ):  # time step that should be plotted
     
     dt = pd.to_datetime([GCM_xy.time.isel(time=randTime).values])
     time = str(dt.date[0])
-    f = plt.figure(figsize=(15, 10))
+    f = plt.figure(figsize=figsize)
     
     vars_ = sorted(list(GCM_xy.data_vars))
     coords = list(GCM_xy.coords)
@@ -53,10 +54,12 @@ def plotAllVar2Xr(
     n: int = 2,  # number of columns in plot
     name: str = "GCM",  # name of dataset plotted, for title
     time: int = 0,
+    vars_ = None
 ):  # time step that should be plotted
-    vars_ = sorted(list(GCM_xy.data_vars))
+    if vars_ == None:
+        vars_ = sorted(list(GCM_xy.data_vars))
     coords = list(GCM_xy.coords)
-    f = plt.figure(figsize=(20, 20))
+    f = plt.figure(figsize=(15, 20))
     map_proj = ccrs.SouthPolarStereo(central_longitude=0.0, globe=None)
     
     k = 1
@@ -81,7 +84,7 @@ def plotAllVar2Xr(
         ax.gridlines()
         ax.set_title(f"{GCM_xy2[var].long_name} GCM ({var})")
         k+=1
-    plt.suptitle(f"First time step {GCM_xy.time[0].values} of {name}")
+        #plt.suptitle(f"First time step {GCM_xy.time[0].values} of {name}")
     
 """
 resize: resizes an image to another size
