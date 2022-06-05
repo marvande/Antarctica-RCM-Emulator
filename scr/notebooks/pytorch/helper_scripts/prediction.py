@@ -83,7 +83,7 @@ def plotRandomPredictions(
         masktarget = np.expand_dims(createMask(sampletarget_, onechannel=True), 2)
 
         dsGCM = createLowerInput(GCMLike, region="Larsen", Nx=35, Ny=25, print_=False)
-        dsGCM = dsGCM.where(dsGCM.y > 0, drop=True)
+        dsGCM = dsGCM.where(dsGCM.y > 0, drop=True) # to have smaller plot same as Larsen region
 
         dsRCM = createLowerTarget(
             interp_dataset, region=region, Nx=64, Ny=64, print_=False
