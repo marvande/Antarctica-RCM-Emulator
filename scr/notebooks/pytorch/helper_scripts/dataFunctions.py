@@ -199,7 +199,8 @@ def plotTarget(
     vmax,  # max value of prediction and target, for shared colorbar
     region="Whole Antarctica",  # region
     colorbar:bool = False,
-    fontsize = 14
+    fontsize = 14, 
+    cmap = "RdYlBu_r"
 ):
     ds = createLowerTarget(
             target_dataset, region=region, Nx=64, Ny=64, print_=False
@@ -215,7 +216,7 @@ def plotTarget(
         x="x",
         transform=ccrs.SouthPolarStereo(),
         add_colorbar=colorbar,
-        cmap="RdYlBu_r",
+        cmap=cmap,
         vmin=vmin,
         vmax=vmax,
     )
@@ -276,6 +277,7 @@ def plotPred(
     vmax,  # max value of prediction and target, for shared colorbar
     region="Whole Antarctica",  # region
     fontsize = 14,
+    cmap = "RdYlBu_r"
 ):
     ds = createLowerTarget(
             target_dataset, region=region, Nx=64, Ny=64, print_=False)
@@ -290,7 +292,7 @@ def plotPred(
         x="x",
         transform=ccrs.SouthPolarStereo(),
         add_colorbar=False,
-        cmap="RdYlBu_r",
+        cmap=cmap,
         vmin=vmin,
         vmax=vmax,
     )

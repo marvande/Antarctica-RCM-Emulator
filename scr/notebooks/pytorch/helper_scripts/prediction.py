@@ -56,7 +56,8 @@ def plotRandomPrediction(preds, x, z, true_smb, r,
                             points_RCM,
                             regions,
                             figsize=(15, 5), 
-                            fontsize = 14
+                            fontsize = 14,
+                            cmap="RdYlBu_r"
                         ):
     fig = plt.figure(figsize=figsize)
     
@@ -104,16 +105,16 @@ def plotRandomPrediction(preds, x, z, true_smb, r,
                 dsGCM.SMB.isel(time = randTime).plot(x='x', ax = ax1, 
                     transform=ccrs.SouthPolarStereo(),
                     add_colorbar=False,vmin = vmin, 
-                    vmax = vmax,cmap="RdYlBu_r")
+                    vmax = vmax,cmap=cmap)
                 ax1.coastlines("10m", color="black", linewidth = 1)
                 ax1.gridlines(color = 'grey')
                 ax1.set_title(f"GCM: SMB")
         if m == 1:
             ax3 = plt.subplot(1, M, m + 1, projection=ccrs.SouthPolarStereo())
-            im = plotTarget(target_dataset, sampletarget_, ax3, vmin, vmax, region=region)
+            im = plotTarget(target_dataset, sampletarget_, ax3, vmin, vmax, region=region, cmap = cmap)
         if m == 2:
             ax4 = plt.subplot(1, M, m + 1, projection=ccrs.SouthPolarStereo())
-            im2 = plotPred(target_dataset, samplepred_, ax4, vmin, vmax, region=region)
+            im2 = plotPred(target_dataset, samplepred_, ax4, vmin, vmax, region=region, cmap = cmap)
             
     for ax in [ax3]:
         for p in points_RCM:
