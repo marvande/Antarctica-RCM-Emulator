@@ -38,8 +38,8 @@ def plotAllVar(
         GCM_xy[var].isel(time=randTime).plot(
             ax=ax, x="x", y="y", transform=ccrs.SouthPolarStereo(), add_colorbar=True
         )
-        ax.coastlines("10m", color="black")
-        ax.gridlines()
+        ax.coastlines("10m", color="black", linewidth = 1)
+        ax.gridlines(color = 'grey')
         ax.set_title(f"{GCM_xy[var].long_name} ({var})")
     plt.suptitle(f"{time} of {name}")
     
@@ -50,16 +50,17 @@ plotAllVar: plots all variables in a xr.Dataset
 def plotAllVar2Xr(
     GCM_xy,  # xr.Dataset
     GCM_xy2,
-    m: int = 7,  # number of rows in plot
-    n: int = 2,  # number of columns in plot
+    m: int = 4,  # number of rows in plot
+    n: int = 4,  # number of columns in plot
     name: str = "GCM",  # name of dataset plotted, for title
     time: int = 0,
-    vars_ = None
+    vars_ = None,
+    figsize=(15, 20)
 ):  # time step that should be plotted
     if vars_ == None:
         vars_ = sorted(list(GCM_xy.data_vars))
     coords = list(GCM_xy.coords)
-    f = plt.figure(figsize=(15, 20))
+    fig = plt.figure(figsize=figsize)
     map_proj = ccrs.SouthPolarStereo(central_longitude=0.0, globe=None)
     
     k = 1
@@ -69,20 +70,26 @@ def plotAllVar2Xr(
         max = np.max([np.nanmax(GCM_xy[var].isel(time=time).values), np.nanmax(GCM_xy2[var].isel(time=time).values)])
         min = np.min([np.nanmin(GCM_xy[var].isel(time=time).values), np.nanmin(GCM_xy2[var].isel(time=time).values)])
         
-        GCM_xy[var].isel(time=time).plot(
-            ax=ax, x="x", y="y", vmin = min, vmax = max, transform=ccrs.SouthPolarStereo(), add_colorbar=True
+        im = GCM_xy[var].isel(time=time).plot(
+            ax=ax, x="x", y="y", vmin = min, vmax = max, transform=ccrs.SouthPolarStereo(), add_colorbar=False
         )
-        ax.coastlines("10m", color="black")
-        ax.gridlines()
-        ax.set_title(f"{GCM_xy[var].long_name} GCMLike ({var})")
+        clb = fig.colorbar(im, ax=ax)
+        clb.set_label(f'{var} [{GCM_xy[var].attrs["units"]}]')    
+        ax.coastlines("10m", color="black", linewidth = 1.5)
+        ax.gridlines(color="grey")
+        #ax.set_title(f"{GCM_xy[var].long_name} GCMLike ({var})")
+        ax.set_title(f"GCMLike: {GCM_xy[var].long_name}")
         k+=1
         ax = plt.subplot(m, n, k, projection=ccrs.SouthPolarStereo())
-        GCM_xy2[var].isel(time=time).plot(
-            ax=ax, x="x", y="y", vmin = min, vmax = max, transform=ccrs.SouthPolarStereo(), add_colorbar=True
+        im = GCM_xy2[var].isel(time=time).plot(
+            ax=ax, x="x", y="y", vmin = min, vmax = max, transform=ccrs.SouthPolarStereo(), add_colorbar=False
         )
-        ax.coastlines("10m", color="black")
-        ax.gridlines()
-        ax.set_title(f"{GCM_xy2[var].long_name} GCM ({var})")
+        ax.coastlines("10m", color="black", linewidth = 1.5)
+        ax.gridlines(color="grey")
+        clb = fig.colorbar(im, ax=ax)
+        clb.set_label(f'{var} [{GCM_xy2[var].attrs["units"]}]')
+        #ax.set_title(f"{GCM_xy2[var].long_name} GCM ({var})")
+        ax.set_title(f"GCM: {GCM_xy2[var].long_name}")
         k+=1
         #plt.suptitle(f"First time step {GCM_xy.time[0].values} of {name}")
     
@@ -166,7 +173,7 @@ def plotTrain(
     dftrain[VAR] = xr.Variable(
         dims=("y", "x"), data=sample2dtrain[:, :, numVar], attrs=ds[VAR].attrs
     )
-    dftrain[VAR].plot(
+    pl = dftrain[VAR].plot(
         ax=ax,
         x="x",
         transform=ccrs.SouthPolarStereo(),
@@ -174,9 +181,11 @@ def plotTrain(
         cmap="RdYlBu_r",
     )
     
-    ax.coastlines("10m", color="black")
+    ax.coastlines("10m", color="black", linewidth = 1)
     ax.gridlines()
     ax.set_title(f"{time} Input: {VAR}")
+    
+    return pl
     
 
 """
@@ -189,15 +198,13 @@ def plotTarget(
     vmin,  # min value of prediction and target, for shared colorbar
     vmax,  # max value of prediction and target, for shared colorbar
     region="Whole Antarctica",  # region
-    colorbar:bool = False
+    colorbar:bool = False,
+    fontsize = 14
 ):
-    if region != "Whole Antarctica":
-        ds = createLowerTarget(
+    ds = createLowerTarget(
             target_dataset, region=region, Nx=64, Ny=64, print_=False
         )
-    else:
-        ds = target_dataset
-        
+    
     coords = {"y": ds.coords["y"], "x": ds.coords["x"]}
     dftrain = xr.Dataset(coords=coords, attrs=ds.attrs)
     dftrain["SMB"] = xr.Variable(
@@ -212,9 +219,9 @@ def plotTarget(
         vmin=vmin,
         vmax=vmax,
     )
-    ax.coastlines("10m", color="black")
+    ax.coastlines("10m", color="black", linewidth = 1)
     ax.gridlines()
-    ax.set_title(f"Target: SMB, {region}")
+    ax.set_title(f"Target: SMB")
     
     return pl
     
@@ -251,9 +258,11 @@ def plotInterp(
         vmin=vmin,
         vmax=vmax,
     )
-    ax.coastlines("10m", color="black")
+    ax.coastlines("10m", color="black", linewidth = 1)
     ax.gridlines()
     ax.set_title(f"Interpolated SMB, {region}")
+    
+    return pl
     
 
 """
@@ -266,19 +275,17 @@ def plotPred(
     vmin,  # min value of prediction and target, for shared colorbar
     vmax,  # max value of prediction and target, for shared colorbar
     region="Whole Antarctica",  # region
+    fontsize = 14,
 ):
-    if region != "Whole Antarctica":
-        ds = createLowerTarget(
-            target_dataset, region=region, Nx=64, Ny=64, print_=False
-        )
-    else:
-        ds = target_dataset
+    ds = createLowerTarget(
+            target_dataset, region=region, Nx=64, Ny=64, print_=False)
+
     coords = {"y": ds.coords["y"], "x": ds.coords["x"]}
     dftrain = xr.Dataset(coords=coords, attrs=ds.attrs)
     dftrain["SMB"] = xr.Variable(
         dims=("y", "x"), data=samplepred[:, :, 0], attrs=ds["SMB"].attrs
     )
-    dftrain.SMB.plot(
+    pl = dftrain.SMB.plot(
         ax=ax,
         x="x",
         transform=ccrs.SouthPolarStereo(),
@@ -287,9 +294,11 @@ def plotPred(
         vmin=vmin,
         vmax=vmax,
     )
-    ax.coastlines("10m", color="black")
+    ax.coastlines("10m", color="black", linewidth = 1)
     ax.gridlines()
-    ax.set_title(f"Prediction: SMB, {region}")
+    ax.set_title(f"Emulator: SMB")
+    
+    return pl
     
 
 """createLowerTarget: creates a subset of the target domain, cut to new dimensions x and y
