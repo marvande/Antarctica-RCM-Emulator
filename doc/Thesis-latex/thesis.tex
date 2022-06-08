@@ -155,22 +155,39 @@ Results
     \item Grid and resolution: RCM (35.0, 35.0)km resolution in south polar stereographic coordinates and GCM horizontal resolution of 1.25° latitude by 1.875° longitude ((68.0, 205.9)km), using a staggered Arakawa C grid~\cite{ACCESS13, ACCESS13_2}. 
     \item Because RCM is in stereographic coordinates and GCM in lat/lon, reproject GCM to stereographic coordinates as well (see Annexe for details [REF ANNEXE]). 
 \end{itemize}
-\subsection{Features for model}
-\subsubsection{Perfect model framework and GCM-Like}
+
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=\columnwidth]{images/domains.png}
+  \caption []{\small Mean surface mass balance over Antarctica (left) and Antarctic Peninsula (right). Regions chosen as target domain $\mathcal{E}$ (in red) and input domain $\mathcal{D}$ (in blue) for Emulator. }
+  \vspace{-3mm}
+    \label{fig:region-of-choice}
+\end{figure}
+
+
+\subsection{Target domain}
 \begin{itemize}
-    \item The authors of~\cite{Kittel} trained their model in a perfect model framework with both inputs and outputs coming from the same RCM simulation. Reasons: 
-    \begin{itemize}
-        \item guarantees a perfect temporal correlation between large scale predictors and a local scale predictand
-        \item more consistent biases between GCM and RCM large scales
-        \item primary importance that the inputs and outputs used to calibrate the model are perfectly consistent, otherwise, the emulator will try to learn a non-existing or non-exact relationship
-        \item perfect model framework allows us to focus on the downscaling function of the RCM, specifically
-    \end{itemize}
-    \item Because of this, we create GCM-like feature. The RCM simulation outputs are upscaled to the GCM resolution (about 68x206km) thanks to a conservative interpolation (Fig.~\ref{fig:training-data-flow}). This first step transforms the RCM outputs into GCM-like outputs ($\operatorname{UPRCM}$). 
-    \item Because GCM data we have is monthly frequency, do monthly mean aggregation for RCM data.
-    \item In a second step, these UPRCM outputs are smoothed by a 3x3 moving average filter.  The grid of the GCM is conserved, with each point containing a smoother information than the raw model outputs. This smoothing also ensures to delete local scale information which might persist through the upscaling. Reasons of authors: Klaver et al (2020) shows that the effective resolution of climate models is often larger (about 3 times) than its nominal resolution. For instance, CNRM-CM5 can247 not be trusted at its own horizontal resolution (≈ 150 km) but at a coarser resolution, probably about 450 to 600 km. 
+    \item The target domain used for this model is a grid box of 64x64 at 35km resolution that contains the Antarctic Peninsula in West Antarctica. 
+    \item Chosen because Antarctic Peninsula has high annual variability in SMB values, shows high extremes of SMB and SMB values vary greatly across geographical location (Fig.~\ref{fig:region-of-choice})
+    \item It covers 5,017,600 square kilometres and is majoritarely covered by ice. Major ice shelves include the Larsen and Ronne ice shelves. 
+    \item Peninsula is very mountainous, its highest peaks rising to about 2,800 m
+    \item Temperature: because the Antarctic Peninsula, which reaches north of the Antarctic Circle, is the most northerly part of Antarctica, it has the mildest climates within this continent. Its temperatures are warmest in January, averaging 1 to 2$\degree C$, and coldest in June, averages from -15 to -20$\degree C$
+    \item Precipitation: varies greatly within the Antarctic Peninsula. The tip of peninsula has highest levels of precipitation with 35–50cm per year. A good portion of this precipitation falls as rain during the summer. On the west coast and along its northeast coast, precipitation is 35cm or less with occasional rain. Along the east coast and the interior of Antarctica, climate is drier with precipitation that ranges from 10-15 cm~\cite{antarctic-climate, antarctic-climate-2}.
+    \item This shows when looking at mean SMB values. The tip of the peninsula and its west coast show higher values than the rest (Fig.~\ref{fig:region-of-choice}). Mean SMB ranges from -9.2 to 9.9 mmWe/day and the extremes observed in this region over the whole time-frame of 1980-2100 are a minimum of -59.0 mmWe/day and a maximum of 30.2 mmWe/day
 \end{itemize}
 
-\subsubsection{Input features}
+\subsection{Perfect model framework}
+\begin{itemize}
+    \item The authors of~\cite{Kittel} trained their U-Net emulator in a \textit{perfect model framework} where both inputs and outputs to the model come from the same RCM simulation. They give several reasons for this: 
+    \begin{itemize}
+        \item the aim of the study is to learn the downscaling function of the RCM
+        \item for this, we need perfect consistency (temporal and spatial correlation) between low-resolution inputs and a high-resolution targets. Otherwise, the emulator will try to learn a non-existing or non-exact relationship
+        \item this is not guaranteed between GCM and RCM because of large scale biases and inconsistencies. 
+    \end{itemize}
+    \item We follow the same reasoning, because of this, we create GCM-like features ($\operatorname{UPRCM}$) by upscaling RCM simulation outputs to GCM resolution (about 68x206km) with conservative interpolation (Fig.~\ref{fig:training-data-flow}). 
+    \item In a second step, these UPRCM outputs are smoothed by a 3x3 moving average filter. This allows the grid of the GCM to be conserved, but each point contains now smoother information and this further ensures to delete local scale information which might persist through the upscaling~\cite{Doury, Klaver2020}. (The authors of~\cite{Doury, Klaver2020} argue that the effective resolution of climate models is often larger (about 3 times) than its nominal resolution and that for this reason a GCM cannot be trusted at its own horizontal resolution but only at a coarser resolution.)
+\end{itemize}
+\subsection{Input features}
 \begin{itemize}
     \item The features $(X, Z)$ provided as input to the emulator consist of two-dimensional variable $X$, and one-dimensional $Z$ (Table~\ref{tab:features}). 
     \item The two-dimensional feature $X$ contains eight different atmospheric variables measured at surface level. \item These eight variables were present both in our RCM and GCM data. In terms of feature selection, we decided to follow the same procedure as in~\cite{Doury} and give all available variables to the model and let it find the right combination to be used [COMPLETE WITH FEATURE SELECTION RESULTS]. 
@@ -189,46 +206,11 @@ Results
     \tilde{Z}_{t,z} = \frac{Z_{t,z}-\bar{Z}_{ref,z}}{\sigma(Z_{ref,z})} \;\;\;\; t\in T, z\in C_1
 \end{equation}
 where $\bar{Z}_{ref,z}$ and $\sigma(Z_{ref,z})$ are respectively the temporal mean and standard deviation of the spatial means or standard deviation of $X_{ref, x}$.
-
-\item Input domain: $48\times25$ grid box (Fig.~\ref{fig:region-of-choice}) defined around the target domain (Antarctic Peninsula) that is resized to $32\times 32$ by bilinear interpolation so as to give the model a square input.
+ \item Input domain: $48\times25$ grid box (Fig.~\ref{fig:region-of-choice}) defined around the target domain (Antarctic Peninsula) that is resized to $32\times 32$ by bilinear interpolation so as to give the model a square input.
+\item Input to model: Each observation given to the emulator is a month $t$ and is an array $X \in I \times J \times C_1$, where the two first dimensions are the spatial coordinates and the number of channels $C_1$ are the different atmospheric variables chosen as predictors, and its corresponding one dimensional $Z \in C_2$ (Fig.~\ref{fig:example-features}).
 \end{itemize}
-
-
-
 
 \input{tables/variables_table}
-
-
-\subsubsection{Target features}
-
-
-\subsubsection{Target and input domains}
-\begin{itemize}
-    \item the input domain is defined around the target domain (de253 scribed in Section 2.3). It is a 16 × 16 ( J = I = 16 in Table 1) CNRM-CM5 grid box visible on Figure 1. Each observation given to the emulator (see Fig255 ure 1 for an illustration) is a day t and it is composed of a 3D array (Xi,j,x), where the two first dimensions are the spatial coordinates and the third di257 mension lists the different variables chosen as predictors, and a 1D array (Zz) regrouping all the 1 dimensional inputs.
-\end{itemize}
-
-% Histogram distances
-\begin{figure}[tbp]
-        \centering
-        \begin{subfigure}[b]{\columnwidth}
-            \centering \includegraphics[width=\textwidth]{images/input_domain.png}
-            \caption[]%
-            {{\small Temperature over whole Antarctica (left) and target domain $\mathcal{E}$ for Emulator (right). }}    
-          \label{fig:rdpoints-RCM}
-        \end{subfigure}
-        \hfill
-        \begin{subfigure}[b]{\columnwidth}  
-            \centering 
-            \includegraphics[width=\textwidth]{images/target_domain.png}
-            \caption[]%
-            {{\small Surface Mass Balance over whole Antarctica (left) and input domain $\mathcal{D}$ for Emulator (right)}}  
-            \label{fig:timeseries-RCM}
-        \end{subfigure}
-        \hfill
-        \caption[]
-        {\small Regions chosen as target domain $\mathcal{E}$ and input domain $\mathcal{D}$ for Emulator. Surface mass balance (top) and temperature (bottom) values are plotted for a random month (02/1980). } 
-        \label{fig:region-of-choice}
-    \end{figure}
 
 
 \begin{figure}[!t]
@@ -421,6 +403,10 @@ advances the status quo.
   \label{fig:training-data-flow}
 \end{figure}
 \section{Pre-processing of RCM}
+\begin{itemize}
+    \item  Because GCM data we have is monthly frequency, do monthly mean aggregation for RCM data.
+
+\end{itemize}
 \section{Pre-processing of GCM}
 \chapter{Feature selection}
 \section{Feature selection RCM}
