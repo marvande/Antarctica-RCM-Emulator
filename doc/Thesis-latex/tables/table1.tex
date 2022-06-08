@@ -1,0 +1,19 @@
+\begin{table}[tbp]
+    \centering
+    \caption{}
+    \renewcommand\arraystretch{1.5}
+    \begin{tabular}{l>{\centering}p{0.1\linewidth}>{\centering}p{0.1\linewidth}>{\centering}p{0.05\linewidth}>{\centering}p{0.05\linewidth}>{\centering}p{0.05\linewidth}>{\centering}p{0.1\linewidth}>{\centering}p{0.05\linewidth}>{\raggedright\arraybackslash}p{0.05\linewidth}}
+    \toprule
+        Model & x & y & Batch size & Num epochs & Weight decay & learning rate & Train loss & Val loss \\ \toprule
+        Simul 2 & (3, 500, 500) & (3, 500, 500) & 4 & 10 & 1e-3 & 0.01 & 0.5513 & 0.5490 \\ 
+        Sim 3 & (3, 250, 250) & (3, 250, 250) & 20 & 10 & 1e-3 & 0.01 & 0.6505 & 0.6240 \\ 
+        Sim 4 & (3, 250, 334) & (3, 250, 334) & 15 & 10 & 1e-3 & 0.01 & 0.6056 & 0.5875 \\ 
+        Sim 5 & (3, 250, 334) & (3, 250, 334) & 15 & 10 & 1e-3 & 0.01 & 0.6043 & 0.5753 \\ 
+        Sim 6 & (3, 250, 334) & (3, 250, 334) & 15 & 10 & 1e-3 & 0.01 & 0.4498 & 0.5015 \\ 
+        Sim  7 & (3, 250, 334) & (3, 250, 334) & 15 & 10 & 1e-3 & 0.01 & 0.3511 & 0.3460 \\ 
+        Sim  8  & (3, 250, 334) & (3, 250, 334) & 15 & 10 & 1e-3 & 0.01 & 0.6199 & 0.6041 \\ 
+        Sim 9 & (3, 250, 334) & (3, 250, 334) & 15 & 10 & 1e-3 & 0.01 & 0.5916 & 0.5254 \\ \bottomrule
+    \end{tabular}
+        \subcaption*{\small Table~\ref{tab:phase1a}. Phase 1a. \textbf{Validation and training loss}: value at the end of the last epoch. \textbf{x and y}: input and output given to the model during training. }
+            \label{tab:phase1a}
+\end{table}

@@ -1,0 +1,31 @@
+\begin{table}[!tbp]
+    \centering
+    \caption{}
+    \renewcommand\arraystretch{1.5}
+    \begin{tabular}{l>{\raggedright\arraybackslash}p{0.4\linewidth}>{\raggedright\arraybackslash}p{0.4\linewidth}}
+    \toprule
+        \textbf{Notation} & \textbf{Description} & \textbf{Dimensions} \\ \toprule 
+        $\mathcal{D}$ & Input Domain & $\llbracket 1, I \rrbracket \times \llbracket 1, J \rrbracket$   \\
+        $\mathcal{E}$ & Target Domain & $\llbracket 1, K \rrbracket \times \llbracket 1, L \rrbracket$   \\
+        $(i,j)$ & Spatial indexes over
+        input grid & $\mathcal{D}$   \\
+        $(k,l)$ & Spatial indexes over
+        target grid & $\mathcal{E}$   \\
+        $X$ & Input: set of 2D variables over $\mathcal{D}$ & $T \times \llbracket 1, I \rrbracket \times \llbracket 1, J \rrbracket \times C_1$   \\
+        $Z$ & Input: set of 1D variables over $\mathcal{D}$ & $T \times C_2$   \\
+        $Y$ & Target: surface mass balance over $\mathcal{E}$ & $T \times \llbracket 1, K \rrbracket \times \llbracket 1, L \rrbracket$  \\
+        $t$ & Monthly temporal index & $T$   \\
+        $x$ & 2D variables index & $C_1$   \\
+        $z$ & 1D variables index & $C_2$ 
+        \\
+        $F$ & Downscaling function of the RCM & 
+        \\
+        $\hat{F}$ & Emulator: Estimation of F & 
+        \\
+        $\operatorname{UPRCM}$ & GCM-like: upscaled RCM to GCM resolution & 
+        \\
+\bottomrule
+    \end{tabular}
+        \subcaption*{\small Table~\ref{tab:notations}. Notations used in this paper.}
+            \label{tab:notations}
+\end{table}
