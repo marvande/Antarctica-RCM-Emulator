@@ -18,7 +18,8 @@ def input_maker(
 	resize_input:bool=True,  # resize input to size_input_domain
 	region:str="Larsen",  # region of interest
 	print_:bool=True,
-	dropvar = None,
+	dropvarRCM = None,
+	dropvarGCM = None
 ):
 	
 	DATASET = createLowerInput(GCMLike, region=region, Nx=48, Ny=25, print_=False) # GCMLike
@@ -32,10 +33,11 @@ def input_maker(
 	# Remove target variable from DATASET for GCMLike:
 	DATASET = DATASET.drop(["SMB"])
 	
-	if dropvar != None: # drop additional variables if needed
-		DATASET = DATASET.drop(dropvar)
-		if GCM != None:
-			DATASETGCM = DATASETGCM.drop(dropvar)
+	if dropvarRCM != None: # drop additional variables if needed
+		DATASET = DATASET.drop(dropvarRCM)
+	
+	if GCM != None and dropvarGCM != None:
+		DATASETGCM = DATASETGCM.drop(dropvarGCM)
 		
 	nbmonths = DATASET.dims["time"]
 	x = DATASET.dims["x"]
@@ -76,9 +78,9 @@ def input_maker(
 		INPUT_2D_ARRAY = INPUT_2D_SDTZ
 		if GCM != None:
 			# standardize GCM according to RCM values
-			mean = np.nanmean(INPUT_2D, axis=(1, 2), keepdims=True)
-			std = np.nanstd(INPUT_2D, axis=(1, 2), keepdims=True)
-			INPUT_2D_SDTZ_GCM = standardize(INPUT_2D_GCM, mean=mean, std=std, ownstd = False) # standardise according to GCMLike values
+			#mean = np.nanmean(INPUT_2D, axis=(1, 2), keepdims=True)
+			#std = np.nanstd(INPUT_2D, axis=(1, 2), keepdims=True)
+			INPUT_2D_SDTZ_GCM = standardize(INPUT_2D_GCM, mean = None, std = None, ownstd = True) 
 			INPUT_2D_ARRAY_GCM = INPUT_2D_SDTZ_GCM
 	else:
 		INPUT_2D_ARRAY = INPUT_2D
@@ -173,7 +175,8 @@ def make_inputs(GCMLike,
 				GCM,
 				size_input_domain:int, 
 				Region:str, 
-				dropvar
+				dropvarRCM,
+				dropvarGCM,
 			): # for combined regions, each sample gets a number so that we know to which region it corresponds
 	# Make input
 	i2D, i1D, VAR_LIST = input_maker(
@@ -188,7 +191,8 @@ def make_inputs(GCMLike,
 		resize_input=True,
 		region=Region,
 		print_=False,
-		dropvar = dropvar, # variables to drop if necessary
+		dropvarRCM = dropvarRCM,
+		dropvarGCM = dropvarGCM,# variables to drop if necessary
 	)
 	
 	# Make a non standardised version for plots:
@@ -204,7 +208,8 @@ def make_inputs(GCMLike,
 		resize_input=False,
 		region=Region,
 		print_=False,
-		dropvar = dropvar,
+		dropvarRCM = dropvarRCM,
+		dropvarGCM = dropvarGCM,
 	)
 	return i1D, i2D, i1D_ns, i2D_ns, VAR_LIST
 
