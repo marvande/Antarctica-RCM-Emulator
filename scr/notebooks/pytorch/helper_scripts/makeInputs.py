@@ -163,11 +163,11 @@ def input_maker(
 		
 	DATASET.close()
 	if GCM != None:
-		print('Return input of GCM')
+		#print('Return input of GCM')
 		DATASETGCM.close()
 		return INPUT_2D_ARRAY_GCM, INPUT_1D_ARRAY, VAR_LIST
 	else:
-		print('Return input of GCMLike')
+		#print('Return input of GCMLike')
 		return INPUT_2D_ARRAY, INPUT_1D_ARRAY, VAR_LIST
 
 

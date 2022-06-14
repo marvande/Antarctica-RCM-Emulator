@@ -22,7 +22,8 @@ def plotAllVar(
     n: int = 3,  # number of columns in plot
     name: str = "GCM",  # name of dataset plotted, for title
     randTime: int = 0,
-    figsize = (15, 10)
+    figsize = (15, 10), 
+    withlabels = True
 ):  # time step that should be plotted
     
     dt = pd.to_datetime([GCM_xy.time.isel(time=randTime).values])
@@ -36,12 +37,18 @@ def plotAllVar(
         var = vars_[i]
         ax = plt.subplot(m, n, i + 1, projection=ccrs.SouthPolarStereo())
         GCM_xy[var].isel(time=randTime).plot(
-            ax=ax, x="x", y="y", transform=ccrs.SouthPolarStereo(), add_colorbar=True
+            ax=ax, x="x", y="y", transform=ccrs.SouthPolarStereo(), add_colorbar=withlabels
         )
         ax.coastlines("10m", color="black", linewidth = 1)
-        ax.gridlines(color = 'grey')
-        ax.set_title(f"{GCM_xy[var].long_name} ({var})")
-    plt.suptitle(f"{time} of {name}")
+        
+        if withlabels:
+            ax.set_title(f"{GCM_xy[var].long_name} ({var})")
+            plt.suptitle(f"{time} of {name}")
+            ax.gridlines(color = 'grey')
+        else:
+            #ax.set_title(f"{var}")
+            ax.set_title("")
+    
     
 
 """
@@ -161,6 +168,7 @@ def plotTrain(
     time,  # timestep of plot
     list_var,  # list of all variables in GCM
     region="Whole Antarctica", # region
+    cmap = 'RdYlBu_r'
 ):  
     if region != "Whole Antarctica":
         ds = createLowerInput(GCMLike, region=region, Nx=48, Ny=25, print_=False)
@@ -178,7 +186,7 @@ def plotTrain(
         x="x",
         transform=ccrs.SouthPolarStereo(),
         add_colorbar=False,
-        cmap="RdYlBu_r",
+        cmap=cmap,
     )
     
     ax.coastlines("10m", color="black", linewidth = 1)
@@ -221,7 +229,7 @@ def plotTarget(
         vmax=vmax,
     )
     ax.coastlines("10m", color="black", linewidth = 1)
-    ax.gridlines()
+    #ax.gridlines()
     ax.set_title(f"Target: SMB")
     
     return pl
@@ -237,6 +245,7 @@ def plotInterp(
     vmin,  # min value of prediction and target, for shared colorbar
     vmax,  # max value of prediction and target, for shared colorbar
     region="Whole Antarctica",  # region
+    cmao = 'RdYlBu_r'
 ):
     if region != "Whole Antarctica":
         ds = createLowerTarget(
@@ -255,12 +264,12 @@ def plotInterp(
         x="x",
         transform=ccrs.SouthPolarStereo(),
         add_colorbar=False,
-        cmap="RdYlBu_r",
+        cmap=cmap,
         vmin=vmin,
         vmax=vmax,
     )
     ax.coastlines("10m", color="black", linewidth = 1)
-    ax.gridlines()
+    #ax.gridlines()
     ax.set_title(f"Interpolated SMB, {region}")
     
     return pl
@@ -297,7 +306,7 @@ def plotPred(
         vmax=vmax,
     )
     ax.coastlines("10m", color="black", linewidth = 1)
-    ax.gridlines()
+    #pax.gridlines()
     ax.set_title(f"Emulator: SMB")
     
     return pl

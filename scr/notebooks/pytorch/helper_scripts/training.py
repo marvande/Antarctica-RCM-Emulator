@@ -460,7 +460,8 @@ def trainFlow(
     # 2. Split into test and train/val set:
     # Create dataset:
     dataset = TensorDataset(X, Z, Y, R)
-    n_test = int(len(dataset) * test_percent)
+    #n_test = int(len(dataset) * test_percent)
+    n_test = 10*12 # take custom 20 years so that it doesn't cut in the middle of a year 
     n_train = len(dataset) - n_test
 
     if randomSplit:

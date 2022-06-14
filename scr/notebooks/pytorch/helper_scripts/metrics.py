@@ -15,8 +15,9 @@ import random as rn
 import pandas as pd 
 import math
 from datetime import datetime
-
-
+import seaborn as sns
+import matplotlib
+from matplotlib.ticker import LogFormatter 
 from dataFunctions import *
 from config import *
 from reproducibility import *
@@ -170,9 +171,9 @@ calculates RMSE between the timeseries of each pixel (i,j) of prediction and tar
 def calculateRMSE(preds, true_smb, ignoreSea=True, normalised = True, squared = False):
     predictions = torch.tensor(preds).clone().detach()
     target = torch.tensor(true_smb).clone().detach()
-    max_ = np.max(np.array(true_smb))
-    min_ = np.min(np.array(true_smb))
-    
+    max_ = np.nanmax(np.array(true_smb))
+    min_ = np.nanmin(np.array(true_smb))
+        
     if normalised: 
         divident = (max_-min_)
     else:
@@ -191,8 +192,6 @@ def calculateRMSE(preds, true_smb, ignoreSea=True, normalised = True, squared = 
             else:
                 RMSE[i, j] = mean_squared_error(y_true = pixelTarg, y_pred = pixelPred, squared=squared)/divident
     return RMSE
-
-
 
 
 
@@ -234,16 +233,14 @@ plotPearsonCorr: Plot a 2D plot whit its correlation value for each pixel (i,j)
 def plotPearsonCorr(
     target_dataset, samplecorr, mean, ax, vmin, vmax, region="Whole Antarctica", cmap = 'GnBu'
 ):
-    if region != "Whole Antarctica":
-        ds = createLowerTarget(
+    ds = createLowerTarget(
             target_dataset, region=region, Nx=64, Ny=64, print_=False
         )
-    else:
-        ds = target_dataset
+
     coords = {"y": ds.coords["y"], "x": ds.coords["x"]}
     dftrain = xr.Dataset(coords=coords, attrs=ds.attrs)
     dftrain["Correlation"] = xr.Variable(dims=("y", "x"), data=samplecorr[:, :, 0])
-    dftrain.Correlation.plot(
+    im = dftrain.Correlation.plot(
         ax=ax,
         x="x",
         transform=ccrs.SouthPolarStereo(),
@@ -280,7 +277,7 @@ def plotWasserstein(
     coords = {"y": ds.coords["y"], "x": ds.coords["x"]}
     dftrain = xr.Dataset(coords=coords, attrs=ds.attrs)
     dftrain["Wasserstein"] = xr.Variable(dims=("y", "x"), data=samplewass[:, :, 0])
-    dftrain.Wasserstein.plot(
+    im = dftrain.Wasserstein.plot(
         ax=ax,
         x="x",
         transform=ccrs.SouthPolarStereo(),
@@ -288,10 +285,12 @@ def plotWasserstein(
         cmap=cmap,
         vmin=vmin,
         vmax=vmax,
-    )
+        norm=matplotlib.colors.LogNorm()
+    )    
     ax.coastlines("10m", color="black", linewidth = 1)
     ax.gridlines()
     ax.set_title("Wasserstein distance, mean:{:.2f}".format(mean))
+    return
 
 
 """
@@ -315,7 +314,7 @@ def plotROV(target_dataset, samplerov, mean, ax, vmin, vmax, region="Whole Antar
     coords = {"y": ds.coords["y"], "x": ds.coords["x"]}
     dftrain = xr.Dataset(coords=coords, attrs=ds.attrs)
     dftrain["ROV"] = xr.Variable(dims=("y", "x"), data=samplerov[:, :, 0])
-    dftrain.ROV.plot(
+    im = dftrain.ROV.plot(
         ax=ax,
         x="x",
         transform=ccrs.SouthPolarStereo(),
@@ -350,7 +349,7 @@ def plotROD(ROD, target_dataset, ax, REGION, cmap = 'GnBu'):
     dftrain = xr.Dataset(coords=coords, attrs=ds.attrs)
     dftrain["ROD"] = xr.Variable(dims=("y", "x"), data=ROD_Mean[:, :, 0])
     cmap = cmap
-    dftrain.ROD.plot(
+    im = dftrain.ROD.plot(
         ax=ax,
         x="x",
         transform=ccrs.SouthPolarStereo(),
@@ -389,7 +388,7 @@ def plotNRMSE(
     dftrain = xr.Dataset(coords=coords, attrs=ds.attrs)
     dftrain["RMSE"] = xr.Variable(dims=("y", "x"), data=samplermse[:, :, 0])
     # cmap = 'RdYlBu_r'
-    dftrain.RMSE.plot(
+    im = dftrain.RMSE.plot(
         ax=ax,
         x="x",
         transform=ccrs.SouthPolarStereo(),
@@ -397,6 +396,7 @@ def plotNRMSE(
         cmap=cmap,
         vmin=vmin,
         vmax=vmax,
+        norm=matplotlib.colors.LogNorm()
     )
     ax.coastlines("10m", color="black", linewidth = 1)
     ax.gridlines()
@@ -813,67 +813,116 @@ def randomPoints_Losses(
     
         
         
-def ComparMetrics(
-    PearsonCorr,
-    Wasserstein,
-    RMSE,
-    PearsonCorrAn, 
-    target_dataset,
-    models,
-    region: str,
-    figsize=(20, 10)):
-    fig = plt.figure(figsize=figsize)
+def CompareMetrics(
+        PearsonCorr,
+        Wasserstein,
+        RMSE,
+        PearsonCorrAn, 
+        target_dataset,
+        models,
+        region: str,
+        figsize=(20, 15),
+        cmap = 'viridis'):
+        fig = plt.figure(figsize=figsize)
     
-    # Correlation
-    vmin, vmax = np.nanmin([PearsonCorr[0],PearsonCorr[1]]), np.nanmax([PearsonCorr[0],PearsonCorr[1]])
-    ax = plt.subplot(2, 4, 1, projection=ccrs.SouthPolarStereo())
-    plotPearsonCorr(
-        target_dataset, PearsonCorr[0], np.nanmean(PearsonCorr[0]), ax, vmin, vmax, region=region
-    )
-    ax.set_title("[{}] Correlation, mean:{:.2f}".format(models[0], np.nanmean(PearsonCorr[0])))
-    ax = plt.subplot(2, 4, 2, projection=ccrs.SouthPolarStereo())
-    plotPearsonCorr(
-        target_dataset, PearsonCorr[1], np.nanmean(PearsonCorr[1]), ax, vmin, vmax, region=region
-    )
-    ax.set_title("[{}] Correlation, mean:{:.2f}".format(models[1], np.nanmean(PearsonCorr[1])))
+        #gs = gridspec.GridSpec(4, 3, width_ratios=[1.5, 1.5, 1]) 
     
-    # Correlation without seasonality:
-    vmin, vmax = np.nanmin([PearsonCorrAn[0],PearsonCorrAn[1]]), np.nanmax([PearsonCorrAn[0],PearsonCorrAn[1]])
-    ax = plt.subplot(2, 4, 3, projection=ccrs.SouthPolarStereo())
-    plotPearsonCorr(
-        target_dataset, PearsonCorrAn[0], np.nanmean(PearsonCorrAn[0]), ax, vmin, vmax, region=region
-    )
-    ax.set_title("[{}] Corr w/o s, mean:{:.2f}".format(models[0], np.nanmean(PearsonCorrAn[0])))
-    ax = plt.subplot(2, 4, 4, projection=ccrs.SouthPolarStereo())
-    plotPearsonCorr(
-        target_dataset, PearsonCorrAn[1], np.nanmean(PearsonCorrAn[1]), ax, vmin, vmax, region=region
-    )
-    ax.set_title("[{}] Corr w/o s, mean:{:.2f}".format(models[1], np.nanmean(PearsonCorrAn[1])))
+        # Correlation
+        vmin, vmax = np.nanmin([PearsonCorr[0],PearsonCorr[1]]), np.nanmax([PearsonCorr[0],PearsonCorr[1]])
+        ax = plt.subplot(4, 3, 1, projection=ccrs.SouthPolarStereo())
+        plotPearsonCorr(
+                target_dataset, PearsonCorr[0], np.nanmean(PearsonCorr[0]), ax, vmin, vmax, region=region, cmap = cmap
+        )
+        ax.set_title("[{}] Correlation, mean:{:.2f}".format(models[0], np.nanmean(PearsonCorr[0])))
+        ax = plt.subplot(4, 3, 2, projection=ccrs.SouthPolarStereo())
+        plotPearsonCorr(
+                target_dataset, PearsonCorr[1], np.nanmean(PearsonCorr[1]), ax, vmin, vmax, region=region, cmap = cmap
+        )
+        ax.set_title("[{}] Correlation, mean:{:.2f}".format(models[1], np.nanmean(PearsonCorr[1])))
     
-    # Wasserstein:
-    vmin, vmax = np.nanmin([Wasserstein[0],Wasserstein[1]]), np.nanmax([Wasserstein[0],Wasserstein[1]])
-    ax = plt.subplot(2, 4, 5, projection=ccrs.SouthPolarStereo())
-    plotWasserstein(
-        target_dataset, Wasserstein[0], np.nanmean(Wasserstein[0]), ax, vmin, vmax, region=region
-    )
-    ax.set_title("[{}] Wasserstein, mean:{:.2f}".format(models[0], np.nanmean(Wasserstein[0])))
-    ax = plt.subplot(2, 4, 6, projection=ccrs.SouthPolarStereo())
-    plotWasserstein(
-        target_dataset, Wasserstein[1], np.nanmean(Wasserstein[1]), ax, vmin, vmax, region=region
-    )
-    ax.set_title("[{}] Wasserstein, mean:{:.2f}".format(models[1], np.nanmean(Wasserstein[1])))
+        # boxplot:
+        ax = plt.subplot(4,3,3)
+        corrdf = pd.DataFrame({'UPRC':PearsonCorr[0].flatten(), 'GCM': PearsonCorr[1].flatten()})
+        im = sns.boxplot(data = corrdf, palette = ["#0072B2", "#CC79A7"], 
+                                                    boxprops=dict(alpha=.8), showmeans=True, ax = ax,
+                                                    meanprops={
+                                                "markerfacecolor":"white", 
+                                                "markeredgecolor":"black",})
+        for violin in ax.collections[::2]:
+                    violin.set_alpha(0.8)
+            
+        # Correlation without seasonality:
+        vmin, vmax = np.nanmin([PearsonCorrAn[0],PearsonCorrAn[1]]), np.nanmax([PearsonCorrAn[0],PearsonCorrAn[1]])
+        ax = plt.subplot(4, 3, 4, projection=ccrs.SouthPolarStereo())
+        plotPearsonCorr(
+                target_dataset, PearsonCorrAn[0], np.nanmean(PearsonCorrAn[0]), ax, vmin, vmax, region=region, cmap = cmap
+        )
+        ax.set_title("[{}] Corr w/o s, mean:{:.2f}".format(models[0], np.nanmean(PearsonCorrAn[0])))
+        ax = plt.subplot(4, 3, 5, projection=ccrs.SouthPolarStereo())
+        plotPearsonCorr(
+                target_dataset, PearsonCorrAn[1], np.nanmean(PearsonCorrAn[1]), ax, vmin, vmax, region=region, cmap = cmap
+        )
+        ax.set_title("[{}] Corr w/o s, mean:{:.2f}".format(models[1], np.nanmean(PearsonCorrAn[1])))
     
-    # RMSE:
-    vmin, vmax = np.nanmin([RMSE[0],RMSE[1]]), np.nanmax([RMSE[0],RMSE[1]])
-    ax = plt.subplot(2, 4, 7, projection=ccrs.SouthPolarStereo())
-    plotNRMSE(
-        target_dataset, RMSE[0], np.nanmean(RMSE[0]), ax, vmin, vmax, region=region
-    )
-    ax.set_title("[{}] RMSE, mean:{:.2f}".format(models[0], np.nanmean(RMSE[0])))
-    ax = plt.subplot(2, 4, 8, projection=ccrs.SouthPolarStereo())
-    plotNRMSE(
-        target_dataset, RMSE[1], np.nanmean(RMSE[1]), ax, vmin, vmax, region=region
-    )
-    ax.set_title("[{}] RMSE, mean:{:.2f}".format(models[1], np.nanmean(RMSE[1])))
+        # boxplot:
+        ax = plt.subplot(4,3,6)
+        corrdf = pd.DataFrame({'UPRC':PearsonCorrAn[0].flatten(), 'GCM': PearsonCorrAn[1].flatten()})
+        im = sns.boxplot(data = corrdf, palette = ["#0072B2", "#CC79A7"], 
+                                                    boxprops=dict(alpha=.8), showmeans=True, ax = ax,
+                                                    meanprops={
+                                                "markerfacecolor":"white", 
+                                                "markeredgecolor":"black",})
+        for violin in ax.collections[::2]:
+                    violin.set_alpha(0.8)
+            
+        # Wasserstein:
+        vmin, vmax = np.nanmin([Wasserstein[0],Wasserstein[1]]), np.nanmax([Wasserstein[0],Wasserstein[1]])
+        ax = plt.subplot(4, 3, 7, projection=ccrs.SouthPolarStereo())
+        im = plotWasserstein(
+                target_dataset, Wasserstein[0], np.nanmean(Wasserstein[0]), ax, vmin, vmax, region=region, cmap = cmap
+        )
+        #formatter = LogFormatter(10, labelOnlyBase=False) 
+        #clb = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04, format=formatter)
+        #clb.set_label("Wasserstein distance")
+        ax.set_title("[{}] Wasserstein, mean:{:.2f}".format(models[0], np.nanmean(Wasserstein[0])))
+        ax = plt.subplot(4, 3, 8, projection=ccrs.SouthPolarStereo())
+        plotWasserstein(
+                target_dataset, Wasserstein[1], np.nanmean(Wasserstein[1]), ax, vmin, vmax, region=region, cmap = cmap
+        )
+        ax.set_title("[{}] Wasserstein, mean:{:.2f}".format(models[1], np.nanmean(Wasserstein[1])))
     
+        # boxplot:
+        ax = plt.subplot(4,3,9)
+        corrdf = pd.DataFrame({'UPRC':Wasserstein[0].flatten(), 'GCM': Wasserstein[1].flatten()})
+        im = sns.boxplot(data = corrdf, palette = ["#0072B2", "#CC79A7"], 
+                                                    boxprops=dict(alpha=.8), showmeans=True, ax = ax,
+                                                    meanprops={
+                                                "markerfacecolor":"white", 
+                                                "markeredgecolor":"black",})
+        for violin in ax.collections[::2]:
+                    violin.set_alpha(0.8)
+            
+        # RMSE:
+        vmin, vmax = np.nanmin([RMSE[0],RMSE[1]]), np.nanmax([RMSE[0],RMSE[1]])
+        ax = plt.subplot(4, 3,10, projection=ccrs.SouthPolarStereo())
+        plotNRMSE(
+                target_dataset, RMSE[0], np.nanmean(RMSE[0]), ax, vmin, vmax, region=region, cmap = cmap
+        )
+        ax.set_title("[{}] RMSE, mean:{:.2f}".format(models[0], np.nanmean(RMSE[0])))
+        ax = plt.subplot(4, 3, 11, projection=ccrs.SouthPolarStereo())
+        plotNRMSE(
+                target_dataset, RMSE[1], np.nanmean(RMSE[1]), ax, vmin, vmax, region=region, cmap = cmap
+        )
+        ax.set_title("[{}] RMSE, mean:{:.2f}".format(models[1], np.nanmean(RMSE[1])))
+    
+        # boxplot:
+        ax = plt.subplot(4,3,12)
+        corrdf = pd.DataFrame({'UPRC':RMSE[0].flatten(), 'GCM': RMSE[1].flatten()})
+        im = sns.boxplot(data = corrdf, palette = ["#0072B2", "#CC79A7"], 
+                                                    boxprops=dict(alpha=.8), showmeans=True, ax = ax,
+                                                    meanprops={
+                                                "markerfacecolor":"white", 
+                                                "markeredgecolor":"black",})
+        for violin in ax.collections[::2]:
+                    violin.set_alpha(0.8)    
     
