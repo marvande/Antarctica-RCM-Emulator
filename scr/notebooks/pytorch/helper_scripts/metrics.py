@@ -231,11 +231,15 @@ plotPearsonCorr: Plot a 2D plot whit its correlation value for each pixel (i,j)
 
 
 def plotPearsonCorr(
-    target_dataset, samplecorr, mean, ax, vmin, vmax, region="Whole Antarctica", cmap = 'GnBu'
+    target_dataset, samplecorr, mean, ax, vmin, vmax, region="Whole Antarctica", cmap = 'GnBu', type  = 'RCM'
 ):
-    ds = createLowerTarget(
-            target_dataset, region=region, Nx=64, Ny=64, print_=False
-        )
+    if type == 'RCM':
+        ds = createLowerTarget(
+                target_dataset, region=region, Nx=64, Ny=64, print_=False
+            )
+    else:
+        ds = createLowerInput(target_dataset, region="Larsen", Nx=48, Ny=25, print_=False)
+        ds = ds.where(ds.y>0, drop=True)
 
     coords = {"y": ds.coords["y"], "x": ds.coords["x"]}
     dftrain = xr.Dataset(coords=coords, attrs=ds.attrs)
@@ -850,6 +854,7 @@ def CompareMetrics(
                                                 "markeredgecolor":"black",})
         for violin in ax.collections[::2]:
                     violin.set_alpha(0.8)
+        ax.set_title('Correlation')
             
         # Correlation without seasonality:
         vmin, vmax = np.nanmin([PearsonCorrAn[0],PearsonCorrAn[1]]), np.nanmax([PearsonCorrAn[0],PearsonCorrAn[1]])
@@ -874,6 +879,7 @@ def CompareMetrics(
                                                 "markeredgecolor":"black",})
         for violin in ax.collections[::2]:
                     violin.set_alpha(0.8)
+        ax.set_title('Corr w/o s')
             
         # Wasserstein:
         vmin, vmax = np.nanmin([Wasserstein[0],Wasserstein[1]]), np.nanmax([Wasserstein[0],Wasserstein[1]])
@@ -901,6 +907,7 @@ def CompareMetrics(
                                                 "markeredgecolor":"black",})
         for violin in ax.collections[::2]:
                     violin.set_alpha(0.8)
+        ax.set_title('Wasserstein distance')
             
         # RMSE:
         vmin, vmax = np.nanmin([RMSE[0],RMSE[1]]), np.nanmax([RMSE[0],RMSE[1]])
@@ -923,6 +930,7 @@ def CompareMetrics(
                                                     meanprops={
                                                 "markerfacecolor":"white", 
                                                 "markeredgecolor":"black",})
+        ax.set_title('RMSE')
         for violin in ax.collections[::2]:
                     violin.set_alpha(0.8)    
     
