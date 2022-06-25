@@ -20,13 +20,17 @@
         \\
         $F$ & Downscaling function of the RCM & 
         \\
-        $\hat{F}$ & Emulator: Estimation of F & 
+        $\hat{F}$ & Emulator: estimation of F & 
         \\
          $\operatorname{RCM}$ & Regional Climate Model & 
         \\
          $\operatorname{GCM}$ & Global Climate Model & 
         \\
-        $\operatorname{UPRCM}$ & GCM-like: upscaled RCM to GCM resolution & 
+        $\operatorname{UPRCM}$ &  RCM upscaled to GCM resolution & 
+        \\
+        $\hat{F}(\operatorname{UPRCM})$ & Prediction of emulator on UPRCM input & $\llbracket 1, K \rrbracket \times \llbracket 1, L \rrbracket$
+        \\
+        $\hat{F}(\operatorname{GCM})$ & Prediction of emulator on GCM input & $\llbracket 1, K \rrbracket \times \llbracket 1, L \rrbracket$
         \\
 \bottomrule
     \end{tabular}
