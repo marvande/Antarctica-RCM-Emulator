@@ -23,6 +23,7 @@
 \usepackage{subcaption}
 \usepackage{gensymb}
 \usepackage{stmaryrd}
+\usepackage{verbatim}
 
 
 \usepackage{hyperref}
@@ -74,6 +75,8 @@ The seventh paragraph will highlight some of your results
 The eights paragraph discusses your core contribution.
 
 This section is usually 3-5 pages.
+
+Surface mass balance (SMB) provides mass input to the surface of the Antarctic and Greenland Ice Sheets and therefore comprises an important control on ice sheet mass balance and resulting contribution to global sea level change. As ice sheet SMB varies highly across multiple scales of space (meters to hundreds of kilometers) and time (hourly to decadal), it is notoriously challenging to observe and represent in models. In addition, SMB consists of multiple components, all of which depend on complex interactions between the atmosphere and the snow/ice surface, large-scale atmospheric circulation and ocean conditions, and ice sheet topography.~\cite{Lenaerts}
 
 %%%%%%%%%%%%%%%%%%%%
 \chapter{State of the art}
@@ -184,7 +187,7 @@ Results
         \item for this, we need perfect consistency (temporal and spatial correlation) between low-resolution inputs and a high-resolution targets. Otherwise, the emulator will try to learn a non-existing or non-exact relationship
         \item this is not guaranteed between GCM and RCM because of large scale biases and inconsistencies. 
     \end{itemize}
-    \item We follow the same reasoning, because of this, we create GCM-like features ($\operatorname{UPRCM}$) by upscaling RCM simulation outputs to GCM resolution (about 68x206km) with conservative interpolation (Fig.~\ref{fig:training-data-flow}). 
+    \item We follow the same reasoning, because of this, we create GCM-like features ($\operatorname{UPRCM}$) by upscaling RCM features to GCM resolution (about 68x206km) with conservative interpolation (Fig.~\ref{fig:training-data-flow}). 
     \item In a second step, these UPRCM outputs are smoothed by a 3x3 moving average filter. This allows the grid of the GCM to be conserved, but each point contains now smoother information and this further ensures to delete local scale information which might persist through the upscaling~\cite{Doury, Klaver2020}. (The authors of~\cite{Doury, Klaver2020} argue that the effective resolution of climate models is often larger (about 3 times) than its nominal resolution and that for this reason a GCM cannot be trusted at its own horizontal resolution but only at a coarser resolution.)
 \end{itemize}
 \subsection{Input features}
@@ -215,8 +218,8 @@ where $\bar{Z}_{ref,z}$ and $\sigma(Z_{ref,z})$ are respectively the temporal me
 
 \begin{figure}[!t]
   \centering
-  \includegraphics[width=\columnwidth]{images/data_example.png}
-  \caption []{\small Illustration of an observation at time-step $t$. Left: 2D input variables $X_t$ on the input domain with its corresponding 1D variable $Z_t$. before they're normalised. Right: the target surface mass balance (SMB) $Y_t$ on the target domain.}
+  \includegraphics[width=\columnwidth]{doc/Thesis-latex/images/unet-with-data.png}
+  \caption []{\small Illustration of an observation at time-step $t$. Left: 2D input variables $X_t$ on the input domain with its corresponding 1D variable $Z_t$. Right: target surface mass balance (SMB) $Y_t$ on the target domain. Middle: scheme of the U-Net architecture used for this paper. }
   \vspace{-3mm}
   \label{fig:example-features}
 \end{figure}
@@ -228,7 +231,7 @@ where $\bar{Z}_{ref,z}$ and $\sigma(Z_{ref,z})$ are respectively the temporal me
 
 \section{Architecture}\label{sec:model}
 \begin{itemize}
-    \item Our architecture is an extension of the SmaAt-UNet model proposed in~\cite{smatunet}.
+    \item Our architecture is an extension of the SmaAt-UNet model proposed in~\cite{smatunet} and combination of U-Net from~\cite{Doury}
      \item SmaAt-UNet extends the traditional U-Net architecture~\cite{unet} with CBAM attention mechanism and depthwise-separable convolutions instead of regular convolutional operations. 
     \item Traditional U-Net is a fully convolutional CNN architecture specifically developed for biomedical image segmentation~\cite{Ronneberger2015}. 
     \item U-Net shows high performance in classification and segmentation tasks where the network is trained to predict a class for each pixel. But U-Nets are also used for image processing tasks, such as super resolution. They have been found to be particularly effective in cases where the output and inputs are of similar size. In our case, we applied it to a time series prediction task in which the network has to predict an exact value for each pixel.
@@ -239,27 +242,19 @@ where $\bar{Z}_{ref,z}$ and $\sigma(Z_{ref,z})$ are respectively the temporal me
     \item  Skip-connections between layers make it possible to skip large sections if required and create a smoother loss surface. 
     \item  Last layers: up-sampling layer in order to reach target size and 1 × 1 convolution (purple arrow) which outputs a single feature map representing the SMB values predicted by the network at time-step $t$
     \item Bottom: add a 1-dimensional input $Z$ at bottom of the “U” after a short fully dense network of 4 layers → concatenates encoded spatial information (from $X$) and encoded temporal information (from $Z$). Forces U-net to give the same importance to 2 inputs before starting decoding path and recreating the high resolution SMB map. 
-    \item CBAMs: using attention in a CNN facilitates the network to focus on specific parts of the input. For our model, we use convolutional block attention modules for the purpose of identifying important features across channels and spatial regions of the image. In CBAMs, the attention mechanism is applied first across the channels of the image and subsequently to the spatial dimension. The CBAMs are placed after the first double convolution and every encoder to amplify important features and suppress unimportant ones on the respective image scale (yellow arrows in Fig.~\ref{fig:UNet-architecture}). Importantly, the input to the encoders is the convoluted and downsampled image from the previous encoder and not the image with the attention mechanism applied. This way, the original image features are preserved until the last encoder. The attention modules only feed into the corresponding upsampling part of the network to which they are connected through the skip-connections.
+    \item CBAMs: using attention in a CNN facilitates the network to focus on specific parts of the input. For our model, we use convolutional block attention modules for the purpose of identifying important features across channels and spatial regions of the image. In CBAMs, the attention mechanism is applied first across the channels of the image and subsequently to the spatial dimension. The CBAMs are placed after the first double convolution and every encoder to amplify important features and suppress unimportant ones on the respective image scale (yellow arrows in Fig.~\ref{fig:example-features}). Importantly, the input to the encoders is the convoluted and downsampled image from the previous encoder and not the image with the attention mechanism applied. This way, the original image features are preserved until the last encoder. The attention modules only feed into the corresponding upsampling part of the network to which they are connected through the skip-connections.
     \item DSC: instead of usual double convolutions, use depthwise-separable convolutions to reduce the number of parameters. In particular, replace all convolutions of the original U-Net model with depthwise-separable convolutions. However, in the convolutional block attention modules we still apply regular convolutions. 
     \item Architecture implemented in PyTorch 1.11
 \end{itemize}
-
-\begin{figure}[!t]
-  \centering
-  \includegraphics[width=\columnwidth]{images/smatunet.png}
-  \caption []{\small Scheme of the neural network architecture used for this paper. The part of the network in the red frame corresponds to the original U-Net defined in \cite{unet}. Image reproduced from~\cite{Doury}.}
-  \vspace{-3mm}
-  \label{fig:UNet-architecture}
-\end{figure}
 
 \section{Training}\label{subsec:training}
 \subsection{Perfect model framework}\label{subsec:perfect-model-training}
 \begin{figure}[!t]
   \centering
-  \includegraphics[width=\columnwidth]{images/evaluation-framework.png}
-  \caption []{\small Evaluation framework}
+  \includegraphics[width=\columnwidth]{images/evaluation_framework.png}
+  \caption []{\small Evaluation framework. Left: perfect world scenario where both the input (UPRCM) and output of the model come from the RCM simulation. Right: GCM scenario where input comes from GCM and output from RCM. Evaluation metrics used described in~\ref{subsec:evaluation-metrics}.}
   \vspace{-3mm}
-  \label{fig:UNet-architecture}
+  \label{fig:evaluation-framework}
 \end{figure}
 
 
@@ -286,7 +281,7 @@ As previously mentioned in~\ref{subsec:perfect-model-training}, the model is tra
 
 
 \subsection{Evaluation metrics}\label{subsec:evaluation-metrics}
-At each position $p$ in domain $\mathcal{D} $ of the regional climate model grid, the truth series ($Y_{p}$) from the regional climate model are compared the predicted values $\widehat{Y_{p}}= \theta(Y_{pp})$ by the emulator $\theta$. For this, we use the same statistical scores the authors of~\cite{Doury} used to evaluate their downscaling model. Each of these metrics is computed over the complete period from $t_{0}=31.01.1980$ to $t_{N}=31.12.2100$:
+At each position $p$ in domain $\mathcal{D} $ of the regional climate model grid, the truth series ($Y_{p}$) from the regional climate model are compared the predicted values $\widehat{Y_{p}}= \theta(Y_{p})$ by the emulator $\theta$. For this, we use the same statistical scores the authors of~\cite{Doury} used to evaluate their downscaling model. Each of these metrics is computed over the complete period from $t_{0}=31.01.1980$ to $t_{N}=31.12.2100$:
 \subsubsection{RMSE}\label{subsubsec:rmse}
 The Root Mean Squared Error (RMSE) is a measure of the difference between predictions of an estimator and the observed values. RMSE is the square root of the average of squared differences between prediction and actual observation. It is also defined as the square of the Mean Squared Error (MSE):
 \begin{align}
@@ -318,7 +313,7 @@ measure to match that in the target~\cite{wasserstein1}. It measures the distanc
 \subsubsection{Variance ratio}\label{subsubsec:variance-ratio}
  The variance ratio measures the performance of the emulator in reproducing local monthly variability. 
  \begin{equation}
-     \operatorname{F}(Y_{p},\widehat{Y_{p}}) = \frac{\operatorname{Var}(\widehat{Y_{p}})}{\operatorname{Var}(Y_{p})}\cdot100
+     \operatorname{V}(Y_{p},\widehat{Y_{p}}) = \frac{\operatorname{Var}(\widehat{Y_{p}})}{\operatorname{Var}(Y_{p})}\cdot100
  \end{equation}
  where $\operatorname{Var}(Y)$ is the variance $\sigma^2$ of sample $Y$. The authors of~\cite{Doury} express this measure as a percentage. 
 
@@ -328,43 +323,85 @@ measure to match that in the target~\cite{wasserstein1}. It measures the distanc
 \chapter{Results}
 %%%%%%%%%%%%%%%%%%%%
 
-In the evaluation you convince the reader that your design works as intended.
-Describe the evaluation setup, the designed experiments, and how the
-experiments showcase the individual points you want to prove.
+\section{Comparison between $\hat{F}$ on UPRCM and GCM}
+\subsection{Geoplots}
 
-This section is usually 5-10 pages.
+% SMB predictions over geoplots
+\begin{figure}[thb]
+  \centering
+  \includegraphics[width=\columnwidth]{doc/Thesis-latex/images/results/geoplots_RCM_GCM.png}
+  \caption []{\small SMB on a random month (05/1980) (top) and averaged over the test period (bottom) over $\mathcal{E}$. From left to right: SMB as in the UPRCM, true RCM, $\operatorname{\hat{F}(UPRCM)}$ and $\operatorname{\hat{F}(GCM)}$. Legend: spatial mean ($\mu$) over $\mathcal{E}$ and spatial correlation ($\operatorname{sc}$) and spatial RMSE ($\operatorname{rmse}$) between the emulated and true SMB pixel values.}
+  \vspace{-3mm}
+  \label{fig:geoplots-GCM-RCM}
+\end{figure}
 
-\section{Results on RCM}
-\subsection{Some time-series}
+\begin{itemize}
+    \item Show the predictions of the Emulator using UPRCM ($\operatorname{\hat{F}(UPRCM)}$) and with GCM ($\operatorname{\hat{F}(GCM)}$). On top you can see predictions for a random test month and on the bottom the mean values over the whole test set. 
+    \item Predictions with LR images that come from an UPRCM look more similar than when the emulator gets GCM inputs. The perfect model framework captures high intensities (in red) better while predictions from GCM look like a smoothed out and toned down image.
+    \item Higher spatial correlation and lower RMSE between truth and Emulator(UPRCM) and truth vs Emulator(GCM)
+    \item Valid both for random month and for averaged over test period
+    \item Ref Fig.~\ref{fig:geoplots-GCM-RCM}
+\end{itemize}
 
-% Histogram distances
+
+\subsection{Time-series}
+\begin{itemize}
+    \item We can see difference between $\operatorname{\hat{F}(UPRCM)}$ and $\operatorname{\hat{F}(GCM)}$ even better when looking at single point time series. 
+    \item We chose 4 points that behaved very differently here. Points 1 and 2 are in regions with high precipitation and so big changes in SMB, while points 3 and 4 are in dryer regions. In grey are the truth values, in blue predictions from UPRCM and in pink predictions from GCM. 
+    \item Here we really see that when given GCM inputs, the emulator gets the general idea but produces a toned down version of the time series with less amplitude. Nevertheless, the predictions coming from UPRCM are very similar, hinting that the emulator is doing its downscaling job.
+    \item Ref Fig.~\ref{fig:timeseries-GCM-UPRCM}
+\end{itemize}
+
+% Time series and geoplots for four points
 \begin{figure}[tbp]
         \centering
-        \begin{subfigure}[b]{0.8\columnwidth}
-            \centering \includegraphics[width=\textwidth]{images/random_month_RCM.png}
+        \begin{subfigure}[b]{0.2\columnwidth}
+            \centering \includegraphics[width=\textwidth]{doc/Thesis-latex/images/results/points_location.png}
             \caption[]%
-            {{\small Random month 09/1980}}    
-          \label{fig:rdpoints-RCM}
+            {{\small}}    
+          \label{fig:points-location}
         \end{subfigure}
         \hfill
         \begin{subfigure}[b]{\columnwidth}  
             \centering 
-            \includegraphics[width=\textwidth]{images/timeseries_RCM.png}
+           \includegraphics[width=\textwidth]{doc/Thesis-latex/images/results/timeseries_RCM_GCM.png}
             \caption[]%
-            {{\small Time series}}  
-            \label{fig:timeseries-RCM}
+            {{\small }}  
+          \label{fig:timeseries-GCM-UPRCM}
         \end{subfigure}
         \hfill
         \caption[]
-        {\small Randomly chosen illustration of the production of the emulator: (a) SMB at a random month over the target domain $\mathcal{E}$ for the GCM, RCM truth and emulator, and (b) random future time series for 6 particular grid points.} 
-        \label{fig:points-timeseries-RCM}
+        {\small Predictions of Emulator trained on UPRCM ($\hat{F}$) or on GCM ($\hat{G}$) and using respectively UPRCM ($\operatorname{\hat{F}(UPRCM)}$) and GCM as low-resolution input ($\operatorname{\hat{F}(GCM)}$, $\operatorname{\hat{G}(GCM)}$). (b) Time-series of predictions of Emulator for four different geographical points (a) in target domain ($\mathcal{E})$). True SMB (grey), $\operatorname{\hat{F}(UPRCM)}$ (blue), $\operatorname{\hat{F}(GCM)}$ (green) and $\operatorname{\hat{G}(GCM)}$ (orange). Legend: temporal correlation ($\operatorname{r}$) and temporal RMSE ($\operatorname{RMSE}$) between the time-series of emulated and true SMB.. Test time-frame: 2090-2100. } 
+        \label{fig:points-timeseries-GCM-UPRCM}
     \end{figure}
+
+\subsection{Annual SMB predictions}
+
+\begin{itemize}
+    \item We also looked at the annual SMB predictions for both inputs. 
+    \item Again we can see here that the model with GCM tends to underestimate the truth, while the RCM emulator comes closer to the truth in average
+    \item Ref Fig.~\ref{fig:annual-SMB}
+\end{itemize}
+
 
 
 \subsection{Evaluation metrics}
 
+\begin{itemize}
+    \item Close in Pearson correlation but higher difference in Wasserstein and RMSE where F(UPRCM) is closer to truth. Indicates Emulator on GCM gets idea of time series but misses amplitude.
+    \item Ref Fig.~\ref{fig:evaluation-GCM-RCM}
+\end{itemize}
 
-\section{Results on GCM}
+% evaluation metrics
+\begin{figure}[thb]
+  \centering
+  \includegraphics[width=\columnwidth]{doc/Thesis-latex/images/results/metrics_RCM_GCM.png}
+  \caption []{\small Three evaluation metrics calculated between Emulator ($\hat{F}$) predictions and true SMB values over test period (2090-2100). At each position $p$ in target domain $\mathcal{E}$, the truth series over the test period are compared to predicted SMB values $\operatorname{\hat{F}(UPRCM)}$ and $\operatorname{\hat{F}(GCM)}$. Right: box plot of evaluation metric values, extending from lower to upper quartile, with a line at the median and triangle at the mean. From top to bottom: Pearson correlation, Wasserstein distance and RMSE (\ref{subsubsec:rmse}). Legend: spatial mean ($\operatorname{\mu}$) of metric over $\mathcal{E}$. }
+  \vspace{-3mm}
+  \label{fig:evaluation-GCM-RCM}
+\end{figure}
+
+\subsection{Feature importance}
 
 %%%%%%%%%%%%%%%%%%%%
 \chapter{Discussion}
@@ -376,7 +413,34 @@ experiments showcase the individual points you want to prove.
 
 This section is usually 5-10 pages.
 
+\begin{itemize}
+    \item Model from Doury is made for super resolution with LR as input. In our case don't have LR SMB available
+    \item Temporal and spatial dis-correlation between GCM and RCM. Ref: Figure~\ref{fig:corr-GCM-RCM}
+    \item Model doing its job but confused by different input when given GCM while trained on UPRCM
+    \item Training on GCM directly ?
+\end{itemize}
 
+
+\begin{figure}[tbp]
+        \centering
+        \begin{subfigure}[b]{\columnwidth}
+            \centering \includegraphics[width=\textwidth]{doc/Thesis-latex/images/results/temporalCorr_RCM_GCM.png}
+            \caption[]%
+            {{\small Temporal correlation between GCM and RCM for each point $p$ in target domain $\mathcal{E}$. Legend: spatial mean ($\mu$) over $\mathcal{E}$}.}    
+          \label{fig:temp-corr-GCM-UPRCM}
+        \end{subfigure}
+        \hfill
+        \begin{subfigure}[b]{\columnwidth}  
+            \centering 
+            \includegraphics[width=\textwidth]{doc/Thesis-latex/images/results/spatialCorr_RCM_GCM.png}
+            \caption[]%
+            {{\small Spatial correlation between UPRCM and GCM variables over $\mathcal{E}$. Individual month in time frame with lowest (left) and highest (right) spatial correlation. Variables from top to bottom: long-wave downward radiation (LWD), short-wave downward radiation (SWD) and precipitation (PR). }}  \label{fig:spatial-corr-GCM-RCM}
+        \end{subfigure}
+        \hfill
+        \caption[]
+        {\small Temporal (top) and spatial (bottom) correlation between UPRCM and GCM variables given as input to Emulator ($\hat{F}$) over target domain ($\mathcal{E})$). Time-frame: 1990-2100. } 
+        \label{fig:corr-GCM-RCM}
+    \end{figure}
 
 %%%%%%%%%%%%%%%%%%%%
 \chapter{Conclusion}
