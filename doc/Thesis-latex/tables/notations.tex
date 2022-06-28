@@ -28,9 +28,11 @@
         \\
         $\operatorname{UPRCM}$ &  RCM upscaled to GCM resolution & 
         \\
-        $\hat{F}(\operatorname{UPRCM})$ & Prediction of emulator on UPRCM input & $\llbracket 1, K \rrbracket \times \llbracket 1, L \rrbracket$
+        $\hat{F}_U(\operatorname{UPRCM})$ & Emulator trained on UPRCM data. Prediction on UPRCM. & $\llbracket 1, K \rrbracket \times \llbracket 1, L \rrbracket$
         \\
-        $\hat{F}(\operatorname{GCM})$ & Prediction of emulator on GCM input & $\llbracket 1, K \rrbracket \times \llbracket 1, L \rrbracket$
+        $\hat{F}_U(\operatorname{GCM})$ & Emulator trained on UPRCM data. Prediction on GCM. & $\llbracket 1, K \rrbracket \times \llbracket 1, L \rrbracket$
+        \\
+        $\hat{F}_G(\operatorname{GCM})$ & Emulator trained on GCM data. Prediction on GCM. & $\llbracket 1, K \rrbracket \times \llbracket 1, L \rrbracket$
         \\
 \bottomrule
     \end{tabular}
