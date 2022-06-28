@@ -17,7 +17,7 @@ pathCluster = "../../../../../../mlodata1/marvande/data/"
 # FileNames
 fileTarget = "MAR(ACCESS1-3)_monthly.nc"
 fileTargetSmoothed = "MAR(ACCESS1-3)_monthly_smoothed.nc"
-fileGCMLike = "MAR(ACCESS1-3)-stereographic_monthly_GCM_like.nc"
+fileUPRCM = "MAR(ACCESS1-3)-stereographic_monthly_GCM_like.nc"
 fileGCM = "ACCESS1-3-stereographic_monthly_cleaned.nc"
 
 # Choose either on of the regions below, or Combined

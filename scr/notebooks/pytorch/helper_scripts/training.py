@@ -55,6 +55,7 @@ def train_net(
     nrmse_maxmin: bool = True,
     earlystopping: int = None,
     savetoGD: bool = True,  # save model to Google drive
+    log_: bool = True
 ):
     # 2. Split into train / validation partitions
     n_val = int(len(dataset) * val_percent)
@@ -62,7 +63,8 @@ def train_net(
     train_set, val_set = random_split(
         dataset, [n_train, n_val], generator=torch.Generator().manual_seed(SEED)
     )
-    logging.info(f"Train set size: {n_train}\n" f"Validation set size: {n_val}\n")
+    if log_:
+        logging.info(f"Train set size: {n_train}\n" f"Validation set size: {n_val}\n")
     # 3. Create data loaders
     loader_args = dict(
         batch_size=batch_size,
@@ -74,29 +76,30 @@ def train_net(
     val_loader = DataLoader(val_set, shuffle=False, drop_last=True, **loader_args)
 
     # (Initialize logging)
-    experiment = wandb.init(project="U-Net", resume="allow", anonymous="must")
-    experiment.config.update(
-        dict(
-            epochs=epochs,
-            batch_size=batch_size,
-            learning_rate=learning_rate,
-            val_percent=val_percent,
-            save_checkpoint=save_checkpoint,
-            amp=amp,
+    if log_:    
+        experiment = wandb.init(project="U-Net", resume="allow", anonymous="must")
+        experiment.config.update(
+            dict(
+                epochs=epochs,
+                batch_size=batch_size,
+                learning_rate=learning_rate,
+                val_percent=val_percent,
+                save_checkpoint=save_checkpoint,
+                amp=amp,
+            )
         )
-    )
-    logging.info(
-        f"""Starting training:
-		Epochs:          {epochs}
-		Batch size:      {batch_size}
-		Learning rate:   {learning_rate}
-		Training size:   {n_train}
-		Validation size: {n_val}
-		Checkpoints:     {save_checkpoint}
-		Device:          {device.type}
-		Mixed Precision: {amp}
-	"""
-    )
+        logging.info(
+            f"""Starting training:
+            Epochs:          {epochs}
+            Batch size:      {batch_size}
+            Learning rate:   {learning_rate}
+            Training size:   {n_train}
+            Validation size: {n_val}
+            Checkpoints:     {save_checkpoint}
+            Device:          {device.type}
+            Mixed Precision: {amp}
+        """
+        )
 
     # 4. Set up the optimizer, the loss, the learning rate scheduler and the loss scaling for AMP
     optimizer = optim.Adam(net.parameters(), lr=learning_rate)
@@ -217,7 +220,8 @@ def train_net(
                         # scheduler.step(val_score)
 
                         # logging.info('Validation MSE loss: {}'.format(val_score))
-                        experiment.log(
+                        if log_:
+                            experiment.log(
                             {
                                 "learning rate": optimizer.param_groups[0]["lr"],
                                 "validation mse": val_score,
@@ -229,8 +233,7 @@ def train_net(
                                 "step": global_step,
                                 "epoch": epoch,
                                 **histograms,
-                            }
-                        )
+                            })
 
         # Train and val loss per epoch for plots:
         train_rmse_e.append(train_rmse / len(train_loader))
@@ -262,7 +265,8 @@ def train_net(
                         net.state_dict(),
                         str(dir_checkpoint / "best_model.pth".format(epoch)),
                     )
-                logging.info(f"Checkpoint {epoch} saved!")
+                if log_:
+                    logging.info(f"Checkpoint {epoch} saved!")
                 best_valScore = mean_val_score
                 earlystopping_counter = 0
 
@@ -272,9 +276,9 @@ def train_net(
                     if (earlystopping_counter >= earlystopping) and (
                         num_epoch >= 20
                     ):  # want to train for at least 20 epochs
-                        logging.info(
-                            f"Stopping early --> mean val score {mean_val_score} has not decreased over {earlystopping} epochs compared to best {best_valScore} "
-                        )
+                        if log_:
+                            logging.info(
+                            f"Stopping early --> mean val score {mean_val_score} has not decreased over {earlystopping} epochs compared to best {best_valScore} ")
                         break
         num_epoch += 1
 
@@ -289,7 +293,8 @@ def train_net(
     )
     # Save to google drive:
     if savetoGD:
-        logging.info("Saving model on google drive")
+        if log_:
+            logging.info("Saving model on google drive")
         pathGD = f"/content/gdrive/My Drive/Master-thesis/saved_models/{nameSave}"
         torch.save(
             net.state_dict(),
@@ -383,13 +388,15 @@ def trainFlow(
     nrmse_maxmin: bool = True,
     earlystopping: int = None,
     savetoGD: bool = True,
+    log_:bool = True
 ):
     seed_all(SEED)
     
     # start logging
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    logging.info(f"Using device {device}")
+    if log_:
+        logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+        logging.info(f"Using device {device}")  
 
     # Build U-Net
     n_channels_x = full_input[0].shape[3]
@@ -400,7 +407,8 @@ def trainFlow(
     dir_checkpoint = Path("./checkpoints/")
 
     if typeNet == "Variance":
-        logging.info("Variance model")
+        if log_:
+            logging.info("Variance model")
         net = UNetVariance(
             n_channels_x=n_channels_x,
             n_channels_z=n_channels_z,
@@ -410,14 +418,16 @@ def trainFlow(
         )
 
     if typeNet == "Attention":
-        logging.info("Attention SmAt_UNet model")
+        if log_:
+            logging.info("Attention SmAt_UNet model")
         net = SmaAt_UNet(
             n_channels_x=n_channels_x,
             n_channels_z=n_channels_z,
             bilinear=False,
         )
     else:
-        logging.info("Baseline model")
+        if log_:
+            logging.info("Baseline model")
         net = UNetBaseline(
             n_channels_x=n_channels_x,
             n_channels_z=n_channels_z,
@@ -425,19 +435,20 @@ def trainFlow(
             filter=filter,
             bilinear=False,
         )
-
-    logging.info(
-        f"Network:\n"
-        f"\t{net.n_channels_x} input channels X\n"
-        f"\t{net.n_channels_z} input channels Z\n"
-        f'\t{"Bilinear" if net.bilinear else "Transposed conv"} upscaling'
-    )
+    if log_:
+        logging.info(
+            f"Network:\n"
+            f"\t{net.n_channels_x} input channels X\n"
+            f"\t{net.n_channels_z} input channels Z\n"
+            f'\t{"Bilinear" if net.bilinear else "Transposed conv"} upscaling'
+        )
 
     # if load model from .pth file
     load = False  # type=str, default=False, Load model from a .pth file
     if load:  # Load model from a .pth file
         net.load_state_dict(torch.load(load, map_location=device))
-        logging.info(f"Model loaded from {load}")
+        if log_:
+            logging.info(f"Model loaded from {load}")
 
     net.to(device=device)  # send to cuda
 
@@ -452,7 +463,8 @@ def trainFlow(
         Xstd = torch.repeat_interleave(Xstd, X.shape[0], dim=0)  # (t_total, 7, 32, 32)
 
         X = torch.cat([X, Xstd], dim=1)  # (t_total, 14, 32, 32)
-    print("X shape: {}".format(X.shape))
+    if log_:
+        logging.info("X shape: {}".format(X.shape))
     # Indicator of regions and their order if combined dataset
     # Encoding 0-> Num regions
     R = regionEncoder(X, region, regions)
@@ -472,7 +484,8 @@ def trainFlow(
     else:
         train_set = TensorDataset(X[:n_train], Z[:n_train], Y[:n_train], R[:n_train])
         test_set = TensorDataset(X[n_train:], Z[n_train:], Y[n_train:], R[n_train:])
-    logging.info(f"Test set size: {n_test}\n" f"Train set size: {n_train}\n")
+    if log_:
+        logging.info(f"Test set size: {n_test}\n" f"Train set size: {n_train}\n")
 
     # 3. Train
     if train:
@@ -494,6 +507,7 @@ def trainFlow(
             nrmse_maxmin=nrmse_maxmin,
             earlystopping=earlystopping,
             savetoGD=savetoGD,
+            log_ = log_
         )
         return train_loss_e, val_loss_e, train_set, test_set, net, nameSave
     else:

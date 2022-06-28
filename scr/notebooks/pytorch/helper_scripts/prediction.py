@@ -8,12 +8,13 @@ from sewar.full_ref import mse, rmse, psnr, uqi, ssim, ergas, scc, rase, sam, ms
 seed_all(SEED)
 
 
-def predict(net, device, test_set, model, dir_checkpoint: str = Path("./checkpoints/")):
-    logging.info(f"Loading saved model {model}")
-    logging.info(f"Using device {device}")
+def predict(net, device, test_set, model, dir_checkpoint: str = Path("./checkpoints/"), log_:bool = True):
+    if log_:
+        logging.info(f"Loading saved model {model}")
+        logging.info(f"Using device {device}")
 
     # test loader:
-
+    MSE = nn.MSELoss()
     loader_args = dict(
         batch_size=1, num_workers=4, pin_memory=True, worker_init_fn=seed_worker
     )
@@ -22,17 +23,18 @@ def predict(net, device, test_set, model, dir_checkpoint: str = Path("./checkpoi
     # Load saved pt model
     net.to(device=device)
     net.load_state_dict(torch.load(str(model), map_location=device))
-    logging.info("Saved model loaded!")
+    if log_:
+        logging.info("Saved model loaded!")
 
     preds, x, y, z, r = [], [], [], [], []
 
-    for batch in tqdm(
+    pred_mse, pred_nrmse_, pred_rmse =0,0,0
+    
+    """for batch in tqdm(
         test_loader,
-        total=len(test_loader),
-        desc="Testing round",
-        unit="batch",
-        leave=False,
-    ):
+        x
+    ):"""
+    for batch in test_loader:
         seed_all(SEED)
         X_test, Z_test, Y_test, R_test = batch[0], batch[1], batch[2], batch[3]
         X_test_cuda = X_test.to(device=device, dtype=torch.float32)  # send to device
@@ -41,20 +43,36 @@ def predict(net, device, test_set, model, dir_checkpoint: str = Path("./checkpoi
 
         net.eval()
         prediction = net(X_test_cuda, Z_test_cuda)
+        
+        # calculate nrmse loss on prediction:
+        mse = MSE(prediction, true_smb)  # MSE loss
+        rmse = torch.sqrt(mse)  # rmse
+        nrmse = torch.sqrt(mse) / (
+            torch.max(true_smb) - torch.min(true_smb)
+        )
+    
+        pred_rmse += rmse.item()  # train rmse
+        pred_nrmse_ += nrmse.item()  # train nrmse
+        pred_mse += mse.item()  # train mse
+        
         prediction = prediction.cpu().detach().numpy()  # send to device
         preds.append(prediction.transpose(0, 2, 3, 1)[0])  # change to numpy
         x.append(X_test.numpy().transpose(0, 2, 3, 1)[0])
         z.append(Z_test.numpy().transpose(0, 2, 3, 1)[0])
         y.append(Y_test.numpy().transpose(0, 2, 3, 1)[0])
         r.append(R_test.numpy()[0])
+        
+    loss_rmse = pred_rmse / len(test_loader)
+    loss_nrmse = pred_nrmse_ / len(test_loader)
+    loss_mse = pred_mse / len(test_loader)
 
-    return preds, x, z, y, r
+    return preds, x, z, y, r, loss_mse, loss_nrmse, loss_rmse
                 
 
     
     
 def plotMultiplePredictions(preds, x, z, true_smb, r, 
-                            GCMLike, 
+                            UPRCM, 
                             VAR_LIST, 
                             target_dataset, 
                             points_RCM,
@@ -69,14 +87,14 @@ def plotMultiplePredictions(preds, x, z, true_smb, r,
         randTime = rn.randint(0, len(preds)-1)
         sample2dtest_, sample_z, sampletarget_, samplepred_  = x[randTime], z[randTime], true_smb[randTime], preds[randTime]
         region = regions[r[randTime]] # region of sample
-        dt = pd.to_datetime([GCMLike.time.isel(time=randTime).values])
+        dt = pd.to_datetime([UPRCM.time.isel(time=randTime).values])
         time = str(dt.date[0])
         
         sample2dtest_ = resize(sample2dtest_, 25, 48, print_=False)
         
         masktarget = np.expand_dims(createMask(sampletarget_, onechannel = True),2)
         
-        dsGCM = createLowerInput(GCMLike, region='Larsen', Nx=35, Ny=25, print_=False)
+        dsGCM = createLowerInput(UPRCM, region='Larsen', Nx=35, Ny=25, print_=False)
         dsGCM = dsGCM.where(dsGCM.y > 0, drop=True)
         dsRCM = createLowerTarget(
                     target_dataset, region=region, Nx=64, Ny=64, print_=False
@@ -122,7 +140,7 @@ def plotMultiplePredictions(preds, x, z, true_smb, r,
 plotMetrics: plots the time series of three points, the pearson correlation plot and (mean) target/predictions 
 @input: 
 - xr.Dataset target_dataset: target dataset
-- xr.Dataset GCMLike: gcm like dataset
+- xr.Dataset UPRCM: gcm like dataset
 - PearsonCorr: pearson correlation at each pixel
 - np.array true_smb_Larsen: true smb values
 - np.array preds_Larsen: predictions of smb values by model
@@ -136,7 +154,7 @@ def plotRidge(
     true_smb_Larsen,
     preds_Larsen,
     target_dataset,
-    GCMLike,
+    UPRCM,
     train_set,
     region: str,
     N: int=4,
@@ -162,7 +180,7 @@ def plotRidge(
     
     colors = ['#0072B2', '#009E73', '#D55E00', '#CC79A7', '#F0E442', '#56B4E9']
     randTime = rn.randint(0, len(true_smb_Larsen) - 1)
-    dt = pd.to_datetime([GCMLike.time.isel(time=randTime).values])
+    dt = pd.to_datetime([UPRCM.time.isel(time=randTime).values])
     time = str(dt.date[0])
     meanTarget = np.nanmean(np.array(true_smb_Larsen), axis = 0)
     
@@ -297,7 +315,7 @@ def plotTimeseries(preds, true_smb, train_set, target_dataset, points_RCM, regio
     plt.tight_layout()
         
         
-def plotTimeseries2Models(preds1, preds2, true_smb, train_set, target_dataset, points_RCM, region, N, cmap = 'viridis', figsize = (15, 10)):
+def plotTimeseries2Models(preds1, preds2, true_smb, train_set, target_dataset, points_RCM, region, N, cmap = 'viridis', figsize = (15, 10), labels = None):
     dsRCM = createLowerTarget(
                 target_dataset, region=region, Nx=64, Ny=64, print_=False
             )
@@ -318,8 +336,12 @@ def plotTimeseries2Models(preds1, preds2, true_smb, train_set, target_dataset, p
         )
         ax = plt.subplot(M, 2, i)
         df["target"].plot(label="RCM Truth", color="grey", alpha=0.8, ax = ax)
-        df["pred1"].plot(label="UPRCM", color=colors[0], ax = ax, linewidth = 1.5)
-        df["pred2"].plot(label="GCM", color=colors[3], ax = ax, linestyle = '--', linewidth = 2)
+        
+        if labels == None:
+            labels = ['UPRCM', 'GCM']
+        
+        df["pred1"].plot(label=labels[0], color=colors[0], ax = ax, linewidth = 1.5)
+        df["pred2"].plot(label=labels[1], color=colors[3], ax = ax, linestyle = '--', linewidth = 2)
         
         pearson = np.corrcoef(df["pred1"], df["target"])[0, 1]
         pearsonGCM = np.corrcoef(df["pred2"], df["target"])[0, 1]
@@ -327,10 +349,10 @@ def plotTimeseries2Models(preds1, preds2, true_smb, train_set, target_dataset, p
         rmseGCM = mean_squared_error(y_true = df["target"], y_pred = df["pred2"], squared = False)
         nrmse = rmse/(df["target"].max()- df["target"].min())
         nrmseGCM = rmseGCM/(df["target"].max()- df["target"].min())
-        ax.set_title("Point: P{} ({}, {})".format(i, p['x'], p['y']))
+        ax.set_title("Point: P{} ({}, {})".format(i, p['x'], p['y']), fontsize = 18)
         
         if (evencol % 2) == 1:
-            ax.set_ylabel('[mmWe/day]')
+            ax.set_ylabel('[mmWe/day]', fontsize = 18)
         if i == 4:
             ax.legend(loc = 'upper right')
             
@@ -360,10 +382,9 @@ def plotTimeseries2Models(preds1, preds2, true_smb, train_set, target_dataset, p
             ax.text(0.02, 0.95, textstrUPRCM, transform=ax.transAxes, fontsize=14,
                 verticalalignment='top')
         if i == 4:
-            ax.set_ylim(top = 2.5)
+            ax.set_ylim(top = 3)
             ax.text(0.02, 0.95, textstrUPRCM, transform=ax.transAxes, fontsize=14,
                 verticalalignment='top')
-            
             
         ax.grid(axis = 'y')
         
@@ -384,6 +405,7 @@ def annualSMB(
     points_RCM,
     predsGCM=None,
     figsize=(15, 10),
+    labels = None
 ):
     N = len(points_RCM)
     M = int(N / 2 + 1)
@@ -399,8 +421,11 @@ def annualSMB(
         randomPixel_targ = np.array(true_smb)[:, p["y"], p["x"], 0]
         randomPixel_pred_GCM = np.array(predsGCM)[:, p["y"], p["x"], 0]
         
+        if labels == None:
+            labels = ['UPRCM', 'GCM']
+        
         df = pd.DataFrame(
-            data={"UPRCM": randomPixel_pred, "RCM Truth": randomPixel_targ, "GCM": randomPixel_pred_GCM},
+            data={labels[0]: randomPixel_pred, "RCM Truth": randomPixel_targ, labels[1]: randomPixel_pred_GCM},
             index=target_dataset.time.values[len(train_set) :],
         )
         
@@ -433,21 +458,21 @@ def annualSMB(
             ax.legend(loc="upper right")
         else:
             ax.get_legend().remove()
-        pearson = np.corrcoef(yearlySMB["UPRCM"], yearlySMB["RCM Truth"])[0, 1]
+        pearson = np.corrcoef(yearlySMB[labels[0]], yearlySMB["RCM Truth"])[0, 1]
         rmse = mean_squared_error(
-            y_true=yearlySMB["RCM Truth"], y_pred=yearlySMB["UPRCM"], squared=False
+            y_true=yearlySMB["RCM Truth"], y_pred=yearlySMB[labels[0]], squared=False
         )
         nrmse = rmse / (yearlySMB["RCM Truth"].max() - yearlySMB["RCM Truth"].min())
         
         metrics.append({"point": p, "rmse": rmse, "nrmse": nrmse, "pearson": pearson})
-        ax.set_title("Point: P{} ({}, {})".format(m, p["x"], p["y"]))
+        ax.set_title("Point: P{} ({}, {})".format(m, p["x"], p["y"]), fontsize = 18)
         ax.grid(axis="y")
-        ax.set_ylabel('[mmWe]')
+        ax.set_ylabel('[mmWe]', fontsize = 18)
         
-        pearson = np.corrcoef(df["UPRCM"], df["RCM Truth"])[0, 1]
-        pearsonGCM = np.corrcoef(df["GCM"], df["RCM Truth"])[0, 1]
-        rmse = mean_squared_error(y_true = df["RCM Truth"], y_pred = df["UPRCM"], squared = False)
-        rmseGCM = mean_squared_error(y_true = df["RCM Truth"], y_pred = df["GCM"], squared = False)
+        pearson = np.corrcoef(df[labels[0]], df["RCM Truth"])[0, 1]
+        pearsonGCM = np.corrcoef(df[labels[1]], df["RCM Truth"])[0, 1]
+        rmse = mean_squared_error(y_true = df["RCM Truth"], y_pred = df[labels[0]], squared = False)
+        rmseGCM = mean_squared_error(y_true = df["RCM Truth"], y_pred = df[labels[1]], squared = False)
         
         textstrUPRCM = '\n'.join((
             r'$\mathrm{RMSE}_{U}=%.2f, r_{U}=%.2f$' % (rmse, pearson, ),
@@ -471,8 +496,8 @@ def annualSMB(
             
             
         # add text:
-        medianGCM = np.median(yearlySMB['GCM'])
-        medianUPRCM = np.median(yearlySMB['UPRCM'])
+        medianGCM = np.median(yearlySMB[labels[1]])
+        medianUPRCM = np.median(yearlySMB[labels[0]])
         medianRCM = np.median(yearlySMB['RCM Truth'])
         
         textstrBoxplots= '\n'.join((
@@ -497,288 +522,136 @@ def annualSMB(
     plt.tight_layout()
     return metrics
 
-def applyMask(sample, mask):
-    sample = mask*sample
-    sample[sample == 0] = 'nan'
-    return sample
-
-    
-def getMinMaxCB(sampleGCM_, sampletarget_, samplepred_):
-    # Get min/max for colorbar:
-    vmin = np.nanmin([np.nanmin([sampletarget_, samplepred_]), np.nanmin(sampleGCM_)])
-    vmax = np.nanmax([np.nanmax([sampletarget_, samplepred_]), np.nanmax(sampleGCM_)])
-    return vmin, vmax 
 
 
-def metrics_geoplot(sampletarget_, samplepred_, samplepredGCM_, nrmse = False):
-    # correlation:
-    scUPRCM = scc(sampletarget_, samplepred_) # spatial correlation
-    scGCM = scc(sampletarget_, samplepredGCM_) # spatial correlation
     
-    # rmse
-    rmseUPRCM = np.mean(calculateRMSE(np.expand_dims(sampletarget_, 0), np.expand_dims(samplepred_, 0), 
-                                                                        normalised = nrmse)) # rmse
-    rmseGCM = np.mean(calculateRMSE(np.expand_dims(sampletarget_, 0), np.expand_dims(samplepredGCM_, 0), 
-                                                                    normalised = nrmse)) # rmse
-                                                                
-    return scUPRCM, scGCM,  rmseUPRCM, rmseGCM
-
-
-def plotRandomPrediction(
-    preds,
-    preds_GCM,
-    true_smb,
-    r,
-    GCMLike,
-    target_dataset,
-    points_RCM,
-    figsize=(15, 5),
-    fontsize=14,
-    cmap="RdYlBu_r",
-):
-    fig = plt.figure(figsize=figsize)
-    map_proj = ccrs.SouthPolarStereo(central_longitude=0.0, globe=None)
-    
-    # Random time:
-    randTime = rn.randint(0, len(preds) - 1)
-    dt = pd.to_datetime([GCMLike.time.isel(time=randTime).values])
-    time = str(dt.date[0].strftime("%m/%Y"))
-    
-    # GCM and RCM over domains
-    dsGCM = createLowerInput(GCMLike, region="Larsen", Nx=35, Ny=25, print_=False)
-    dsGCM = dsGCM.where(dsGCM.y > 0, drop=True)
-    dsRCM = createLowerTarget(
-        target_dataset, region="Larsen", Nx=64, Ny=64, print_=False
-    )
-    
-    # samples at that time:
-    sampletarget_, samplepred_, samplepredGCM_, sampleGCM_ = (
-        true_smb[randTime],
-        preds[randTime],
-        preds_GCM[randTime],
-        np.expand_dims(dsGCM.SMB.isel(time=1).values, 2),
-    )
-    
-    # mean values:
-    meanGCM = np.expand_dims(dsGCM.SMB.mean(dim="time").values, 2)
-    meanTarget = np.array(true_smb).mean(axis=0)
-    meanPred = np.array(preds).mean(axis=0)
-    meanPredGCM = np.array(preds_GCM).mean(axis=0)
-    
-    # metrics for plots:
-    scUPRCM, scGCM, rmseUPRCM, rmseGCM = metrics_geoplot(
-        sampletarget_, samplepred_, samplepredGCM_, nrmse=False
-    )
-    meanscUPRCM, meanscGCM, meanrmseUPRCM, meanrmseGCM = metrics_geoplot(
-        meanTarget, meanPred, meanPredGCM, nrmse=False
-    )
-    
-    # apply mask over ice/land:
-    masktarget = np.expand_dims(createMask(sampletarget_, onechannel=True), 2)
-    maskGCM = np.expand_dims(createMask(sampleGCM_, onechannel=True), 2)
-    
-    sampletarget_ = applyMask(sampletarget_, masktarget)
-    samplepred_ = applyMask(samplepred_, masktarget)
-    samplepredGCM_ = applyMask(samplepredGCM_, masktarget)
-    sampleGCM_ = applyMask(sampleGCM_, maskGCM)
-    
-    meanTarget = applyMask(meanTarget, masktarget)
-    meanPred = applyMask(meanPred, masktarget)
-    meanPredGCM = applyMask(meanPredGCM, masktarget)
-    meanGCM = applyMask(meanGCM, maskGCM)
-    
-    # create xarray for mean GCM smb:
-    coords = {"y": dsGCM.coords["y"], "x": dsGCM.coords["x"]}
-    GCM_SMB = xr.Dataset(coords=coords, attrs=dsGCM.attrs)
-    GCM_SMB["Mean SMB"] = xr.Variable(
-        dims=("y", "x"), data=meanGCM[:, :, 0], attrs=dsGCM["SMB"].attrs
-    )
-    GCM_SMB["SMB"] = xr.Variable(
-        dims=("y", "x"), data=sampleGCM_[:, :, 0], attrs=dsGCM["SMB"].attrs
-    )
-    
-    # Random time plots:
-    vmin, vmax = getMinMaxCB(sampleGCM_, sampletarget_, samplepred_)
-    
-    ax1 = plt.subplot(2, 4, 1, projection=ccrs.SouthPolarStereo())
-    GCM_SMB.SMB.plot(
-        x="x",
-        ax=ax1,
-        transform=ccrs.SouthPolarStereo(),
-        add_colorbar=False,
-        vmin=vmin,
-        vmax=vmax,
-        cmap=cmap,
-    )
-    ax1.coastlines("10m", color="black", linewidth=1)
-    ax1.set_title(f"GCM")
-    
-    textstrBoxplots = "\n".join((r"$\mathrm{\mu}=%.1f$" % (GCM_SMB.SMB.mean(),),))
-    ax1.text(
-        0.02,
-        0.95,
-        textstrBoxplots,
-        transform=ax1.transAxes,
-        fontsize=14,
-        verticalalignment="top",
-    )
-    
-    ax2 = plt.subplot(2, 4, 2, projection=ccrs.SouthPolarStereo())
-    im = plotTarget(
-        target_dataset, sampletarget_, ax2, vmin, vmax, region="Larsen", cmap=cmap
-    )
-    ax2.set_title(f"Truth RCM")
-    
-    mean = np.nanmean(sampletarget_)
-    textstrBoxplots = "\n".join((r"$\mathrm{\mu}=%.1f$" % (mean,),))
-    ax2.text(
-        0.02,
-        0.95,
-        textstrBoxplots,
-        transform=ax2.transAxes,
-        fontsize=14,
-        verticalalignment="top",
-    )
-    
-    ax3 = plt.subplot(2, 4, 3, projection=ccrs.SouthPolarStereo())
-    im2 = plotPred(
-        target_dataset, samplepred_, ax3, vmin, vmax, region="Larsen", cmap=cmap
-    )
-    ax3.set_title(f"Emulator - UPRCM")
-    
-    mean = np.nanmean(samplepred_)
-    textstrBoxplots = "\n".join(
-        (
-            r"$\mathrm{\mu}=%.1f, \mathrm{sc}=%.1f, \mathrm{rmse}=%.2f$"
-            % (mean, scUPRCM, rmseUPRCM),
-        )
-    )
-    ax3.text(
-        0.02,
-        0.95,
-        textstrBoxplots,
-        transform=ax3.transAxes,
-        fontsize=14,
-        verticalalignment="top",
-    )
-    
-    ax4 = plt.subplot(2, 4, 4, projection=ccrs.SouthPolarStereo())
-    im2 = plotPred(
-        target_dataset, samplepredGCM_, ax4, vmin, vmax, region="Larsen", cmap=cmap
-    )
-    ax4.set_title(f"Emulator - GCM")
-    
-    mean = np.nanmean(samplepredGCM_)
-    textstrBoxplots = "\n".join(
-        (
-            r"$\mathrm{\mu}=%.1f, \mathrm{sc}=%.1f, \mathrm{rmse}=%.2f$"
-            % (mean, scGCM, rmseGCM),
-        )
-    )
-    ax4.text(
-        0.02,
-        0.95,
-        textstrBoxplots,
-        transform=ax4.transAxes,
-        fontsize=14,
-        verticalalignment="top",
-    )
-    
-    clb = fig.colorbar(im, ax=[ax1, ax2, ax3, ax4], fraction=0.046, pad=0.04)
-    clb.set_label("SMB [mmWe/day]")
-    
-    for ax in [ax2]:
-        for p in points_RCM:
-            ax.scatter(
-                dsRCM.isel(x=p["x"]).x.values,
-                dsRCM.isel(y=p["y"]).y.values,
-                marker="x",
-                s=100,
-                color="red",
-            )
+def CompareMetrics(
+        PearsonCorr,
+        Wasserstein,
+        RMSE,
+        NRMSE, 
+        target_dataset,
+        models,
+        region: str,
+        figsize=(20, 15),
+        cmap = 'viridis'):
+        fig = plt.figure(figsize=figsize)
             
-    # Mean values:
-    vmin, vmax = getMinMaxCB(meanGCM, meanTarget, meanPred)
-    
-    ax5 = plt.subplot(2, 4, 5, projection=ccrs.SouthPolarStereo())
-    GCM_SMB["Mean SMB"].plot(
-        x="x",
-        ax=ax5,
-        transform=ccrs.SouthPolarStereo(),
-        add_colorbar=False,
-        vmin=vmin,
-        vmax=vmax,
-        cmap=cmap,
-    )
-    ax5.coastlines("10m", color="black", linewidth=1)
-    ax5.set_title(f"Mean: GCM")
-    mean = np.nanmean(GCM_SMB["Mean SMB"].values)
-    textstrBoxplots = "\n".join((r"$\mathrm{\mu}=%.1f$" % (mean,),))
-    ax5.text(
-        0.02,
-        0.95,
-        textstrBoxplots,
-        transform=ax5.transAxes,
-        fontsize=14,
-        verticalalignment="top",
-    )
-    
-    meanUPRCM = np.nanmean(meanPred)
-    meanGCM = np.nanmean(meanPredGCM)
-    
-    ax6 = plt.subplot(2, 4, 6, projection=ccrs.SouthPolarStereo())
-    plotTarget(target_dataset, meanTarget, ax6, vmin, vmax, region="Larsen", cmap=cmap)
-    ax6.set_title("Mean: Truth RCM")
-    textstrBoxplots = "\n".join((r"$\mathrm{\mu}=%.1f$" % (np.nanmean(meanTarget)),))
-    ax6.text(
-        0.02,
-        0.95,
-        textstrBoxplots,
-        transform=ax6.transAxes,
-        fontsize=14,
-        verticalalignment="top",
-    )
-    
-    ax7 = plt.subplot(2, 4, 7, projection=ccrs.SouthPolarStereo())
-    plotTarget(target_dataset, meanPred, ax7, vmin, vmax, region="Larsen", cmap=cmap)
-    ax7.set_title("Mean: Emulator - UPRCM")
-    textstrBoxplots = "\n".join(
-        (
-            r"$\mathrm{\mu}=%.1f, \mathrm{sc}=%.1f, \mathrm{rmse}=%.2f$"
-            % (meanUPRCM, meanscUPRCM, meanrmseUPRCM),
+        M, N = 3, 3
+        # Correlation
+        vmin, vmax = np.nanmin([PearsonCorr[0],PearsonCorr[1]]), np.nanmax([PearsonCorr[0],PearsonCorr[1]])
+        ax = plt.subplot(M, N, 1, projection=ccrs.SouthPolarStereo())
+        plotPearsonCorr(
+                target_dataset, PearsonCorr[0], np.nanmean(PearsonCorr[0]), ax, vmin, vmax, region=region, cmap = cmap
         )
-    )
-    ax7.text(
-        0.02,
-        0.95,
-        textstrBoxplots,
-        transform=ax7.transAxes,
-        fontsize=14,
-        verticalalignment="top",
-    )
+        ax.set_title("{}: Correlation".format(models[0]))
+        textstrBoxplots= '\n'.join((
+            r'$\mathrm{\mu}=%.2f$' % (np.nanmean(PearsonCorr[0]) ),))
     
-    ax8 = plt.subplot(2, 4, 8, projection=ccrs.SouthPolarStereo())
-    imMean = plotTarget(
-        target_dataset, meanPredGCM, ax8, vmin, vmax, region="Larsen", cmap=cmap
-    )
-    ax8.set_title("Mean: Emulator - GCM")
-    textstrBoxplots = "\n".join(
-        (
-            r"$\mathrm{\mu}=%.1f, \mathrm{sc}=%.1f, \mathrm{rmse}=%.2f$"
-            % (meanGCM, meanscGCM, meanrmseGCM),
+        ax.text(0.02, 0.95, textstrBoxplots, transform=ax.transAxes, fontsize=16,
+                verticalalignment='top')
+        ax = plt.subplot(M, N, 2, projection=ccrs.SouthPolarStereo())
+        plotPearsonCorr(
+                target_dataset, PearsonCorr[1], np.nanmean(PearsonCorr[1]), ax, vmin, vmax, region=region, cmap = cmap
         )
-    )
-    ax8.text(
-        0.02,
-        0.95,
-        textstrBoxplots,
-        transform=ax8.transAxes,
-        fontsize=14,
-        verticalalignment="top",
-    )
+        ax.set_title("{}: Correlation".format(models[1]))
+        textstrBoxplots= '\n'.join((
+            r'$\mathrm{\mu}=%.2f$' % (np.nanmean(PearsonCorr[1]) ),))
     
-    clb = fig.colorbar(imMean, ax=[ax5, ax6, ax7, ax8], fraction=0.046, pad=0.04)
-    clb.set_label("SMB [mmWe/day]")
+        ax.text(0.02, 0.95, textstrBoxplots, transform=ax.transAxes, fontsize=16,
+                verticalalignment='top')
     
-    plt.suptitle(f"Random month: {time}")
     
+        # boxplot:
+        ax = plt.subplot(M,N,3)
+        
+        corrdf = pd.DataFrame({models[0]:PearsonCorr[0].flatten(), models[1]: PearsonCorr[1].flatten()})
+        im = sns.boxplot(data = corrdf, palette = ["#0072B2", "#CC79A7"], 
+                                                    boxprops=dict(alpha=.8), showmeans=True, ax = ax,
+                                                    meanprops={
+                                                "markerfacecolor":"white", 
+                                                "markeredgecolor":"black",})
+        for violin in ax.collections[::2]:
+                    violin.set_alpha(0.8)
+        ax.set_title('Correlation')
+    
+          
+        # Wasserstein:
+        vmin, vmax = np.nanmin([Wasserstein[0],Wasserstein[1]]), np.nanmax([Wasserstein[0],Wasserstein[1]])
+        ax = plt.subplot(M, N, 4, projection=ccrs.SouthPolarStereo())
+        im = plotWasserstein(
+                target_dataset, Wasserstein[0], np.nanmean(Wasserstein[0]), ax, vmin, vmax, region=region, cmap = cmap
+        )
+        ax = plt.subplot(M, N, 5, projection=ccrs.SouthPolarStereo())
+        textstrBoxplots= '\n'.join((
+            r'$\mathrm{\mu}=%.2f$' % (np.nanmean(Wasserstein[0]) ),))
+        
+        ax.text(0.02, 0.95, textstrBoxplots, transform=ax.transAxes, fontsize=16,
+                verticalalignment='top')
+    
+        #formatter = LogFormatter(10, labelOnlyBase=False) 
+        #clb = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04, format=formatter)
+        #clb.set_label("Wasserstein distance")
+        ax.set_title("{}: Wasserstein".format(models[0]))
+        plotWasserstein(
+                target_dataset, Wasserstein[1], np.nanmean(Wasserstein[1]), ax, vmin, vmax, region=region, cmap = cmap
+        )
+        ax.set_title("{}: Wasserstein".format(models[1]))
+        textstrBoxplots= '\n'.join((
+            r'$\mathrm{\mu}=%.2f$' % (np.nanmean(Wasserstein[1]) ),))
+    
+        ax.text(0.02, 0.95, textstrBoxplots, transform=ax.transAxes, fontsize=16,
+                verticalalignment='top')
+    
+        # boxplot:
+        ax = plt.subplot(M, N,6)
+        corrdf = pd.DataFrame({models[0]:Wasserstein[0].flatten(), models[1]: Wasserstein[1].flatten()})
+        im = sns.boxplot(data = corrdf, palette = ["#0072B2", "#CC79A7"], 
+                                                    boxprops=dict(alpha=.8), showmeans=True, ax = ax,
+                                                    meanprops={
+                                                "markerfacecolor":"white", 
+                                                "markeredgecolor":"black",})
+
+        for violin in ax.collections[::2]:
+                    violin.set_alpha(0.8)
+        ax.set_title('Wasserstein distance')
+        ax.set_yscale('log')
+    
+        # RMSE:
+        vmin, vmax = np.nanmin([RMSE[0],RMSE[1]]), np.nanmax([RMSE[0],RMSE[1]])
+        ax = plt.subplot(M, N,7, projection=ccrs.SouthPolarStereo())
+        plotNRMSE(
+                target_dataset, RMSE[0], np.nanmean(RMSE[0]), ax, vmin, vmax, region=region, cmap = cmap
+        )
+        textstrBoxplots= '\n'.join((
+            r'$\mathrm{\mu}=%.2f$' % (np.nanmean(RMSE[0]) ),))
+    
+        ax.text(0.02, 0.95, textstrBoxplots, transform=ax.transAxes, fontsize=16,
+                verticalalignment='top')
+        ax.set_title("{}: RMSE".format(models[0]))
+        ax = plt.subplot(M, N, 8, projection=ccrs.SouthPolarStereo())
+        plotNRMSE(
+                target_dataset, RMSE[1], np.nanmean(RMSE[1]), ax, vmin, vmax, region=region, cmap = cmap
+        )
+        ax.set_title("{}: RMSE".format(models[1]))
+        textstrBoxplots= '\n'.join((
+            r'$\mathrm{\mu}=%.2f$' % (np.nanmean(RMSE[1]) ),))
+        
+        ax.text(0.02, 0.95, textstrBoxplots, transform=ax.transAxes, fontsize=16,
+                verticalalignment='top')
+        # boxplot:
+        ax = plt.subplot(M, N,9)
+        corrdf = pd.DataFrame({models[0]:RMSE[0].flatten(), models[1]: RMSE[1].flatten()})
+        im = sns.boxplot(data = corrdf, palette = ["#0072B2", "#CC79A7"], 
+                                                    boxprops=dict(alpha=.8), showmeans=True, ax = ax,
+                                                    meanprops={
+                                                "markerfacecolor":"white", 
+                                                "markeredgecolor":"black",})
+        ax.set_title('RMSE')
+        ax.set_yscale('log')
+        for violin in ax.collections[::2]:
+                    violin.set_alpha(0.8)  
+                    
+                    
+    
+            

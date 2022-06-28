@@ -84,8 +84,8 @@ def plotAllVar2Xr(
         clb.set_label(f'{var} [{GCM_xy[var].attrs["units"]}]')    
         ax.coastlines("10m", color="black", linewidth = 1.5)
         ax.gridlines(color="grey")
-        #ax.set_title(f"{GCM_xy[var].long_name} GCMLike ({var})")
-        ax.set_title(f"GCMLike: {GCM_xy[var].long_name}")
+        #ax.set_title(f"{GCM_xy[var].long_name} UPRCM ({var})")
+        ax.set_title(f"UPRCM: {GCM_xy[var].long_name}")
         k+=1
         ax = plt.subplot(m, n, k, projection=ccrs.SouthPolarStereo())
         im = GCM_xy2[var].isel(time=time).plot(
@@ -161,7 +161,7 @@ def takeRandomSamples(
 plotTrain: Plot a training sample for a certain time step
 """
 def plotTrain(
-    GCMLike,  # GCM dataset
+    UPRCM,  # GCM dataset
     sample2dtrain,  # 2d training sample
     numVar,  # number of variable to plot (because 7 channels)
     ax,
@@ -171,9 +171,9 @@ def plotTrain(
     cmap = 'RdYlBu_r'
 ):  
     if region != "Whole Antarctica":
-        ds = createLowerInput(GCMLike, region=region, Nx=48, Ny=25, print_=False)
+        ds = createLowerInput(UPRCM, region=region, Nx=48, Ny=25, print_=False)
     else:
-        ds = GCMLike
+        ds = UPRCM
         
     VAR = list_var[numVar]
     coords = {"y": ds.coords["y"], "x": ds.coords["x"]}
@@ -364,7 +364,7 @@ def createLowerTarget(
 """createLowerInput: creates a subset of the input domain, cut to new dimensions x and y
 """
 def createLowerInput(
-    GCMLike,
+    UPRCM,
     region: str = "Larsen",  # region of interest
     Nx: int = 48,  # new size of x dimension
     Ny: int = 25,  # new size of y dimension
@@ -374,26 +374,26 @@ def createLowerInput(
         max_x = (Nx / 2) * 68 * 1000
         max_y = (Ny) * 206 * 1000
         
-        df = GCMLike.where(GCMLike.x < max_x, drop=True)
+        df = UPRCM.where(UPRCM.x < max_x, drop=True)
         df = df.where(-max_x <= df.x, drop=True)
         
     if region == "Larsen":
-        min_x = GCMLike.x.min().values
-        df = GCMLike.where(GCMLike.x < min_x + (Nx * 68 * 1000), drop=True)
+        min_x = UPRCM.x.min().values
+        df = UPRCM.where(UPRCM.x < min_x + (Nx * 68 * 1000), drop=True)
         
     if region == "Amundsen":  # same region as Larsen
-        min_x = GCMLike.x.min().values
-        df = GCMLike.where(GCMLike.x < min_x + (Nx * 68 * 1000), drop=True)
+        min_x = UPRCM.x.min().values
+        df = UPRCM.where(UPRCM.x < min_x + (Nx * 68 * 1000), drop=True)
     
     if region == "Wilkes":  # same region as Larsen
-        max_x = GCMLike.x.max().values
-        df = GCMLike.where(GCMLike.x > max_x - (Nx * 68 * 1000), drop=True)
+        max_x = UPRCM.x.max().values
+        df = UPRCM.where(UPRCM.x > max_x - (Nx * 68 * 1000), drop=True)
     
     if region == "Maud":  # same region as lower peninsula
         max_x = (Nx / 2) * 68 * 1000
         max_y = (Ny) * 206 * 1000
     
-        df = GCMLike.where(GCMLike.x < max_x, drop=True)
+        df = UPRCM.where(UPRCM.x < max_x, drop=True)
         df = df.where(-max_x <= df.x, drop=True)
     
     if print_:
