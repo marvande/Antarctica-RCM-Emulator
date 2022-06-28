@@ -153,7 +153,7 @@ Results
 
 \begin{itemize}
 \item \textbf{Global idea}: the RCM-emulator $\hat{F}$ uses a neural network architecture to estimate the downscaling function $F$ in 
-\begin{equation}
+\begin{equation}\label{eq:emulator-equation}
     Y = \operatorname{F}(X) \;\;\;\; X\subset\mathcal{D}, Y\subset\mathcal{E}
     \end{equation}
 where $X$ are low-resolution variables from a global climate simulation over an input domain $\mathcal{D}$ and $Y$ is a high resolution surface variable inside a regional climate simulation over a target domain $\mathcal{E}$. 
@@ -205,7 +205,7 @@ where $X$ are low-resolution variables from a global climate simulation over an 
 \end{itemize}
 
 
-\subsection{Features}
+\subsection{Features}\label{subsec:features}
 \begin{itemize}
     \item The Emulator receives as input features $(X, Z)$ that consist of two-dimensional variable $X$, and one-dimensional $Z$ (Table~\ref{tab:features}). 
     \item X: The two-dimensional feature $X$ contains eight different atmospheric variables measured daily at (near) surface level. After a monthly mean aggregation, the frequency of variables is monthly.
@@ -250,7 +250,7 @@ where $\bar{Z}_{\mathrm{ref},z}$ and $\sigma(Z_{\mathrm{ref},z})$ are respective
   \label{fig:example-features}
 \end{figure}
 
-\subsection{Architecture}
+\subsection{Architecture}\label{subsec:architecture}
 \begin{itemize}
     \item The Emulator's architecture extends the U-Net used to emulate near-surface temperature in~\cite{Doury} with mechanisms from the SmaAt-UNet model~\cite{smatunet} (Fig.~\ref{fig:example-features}).
      \item SmaAt-UNet: SmaAt-UNet extends the traditional U-Net architecture~\cite{unet} with CBAM attention mechanism and depthwise-separable convolutions instead of regular convolutional operations. 
@@ -264,27 +264,47 @@ where $\bar{Z}_{\mathrm{ref},z}$ and $\sigma(Z_{\mathrm{ref},z})$ are respective
     \item  Last layers: up-sampling layer (light blue arrow) in order to reach target size ($64\times 64$) and $1\times1$ convolution (pink arrow) to change the number of channels from $64$ to $1$, and outputs a single image representing the SMB values predicted by the network at time-step $t$.
     \item Attention: Convolutional block attention modules (CBAMs, yellow arrow)~\cite{smatunet} are placed after each double convolution in the Encoder and used to detect important features over the channels and spatial regions of the inputs. In CBAMs, the attention mechanism is first applied over the channels of the image and then the spatial dimension. Note that the input to the next layer of the Encoder is not the attention feature map (white block) but the convoluted and downsampled image of the previous layer (dark blue block). This way, the original image features are preserved throughout the Encoder layers. Finally, the attention blocks are fed through skip-connections to the corresponding Decoder layer to be concatenated~\cite{smatunet}. Contrary to the DSC convolutions used in the Encoder and Decoder, CBAMs use regular convolutions.  
     \end{itemize}
-    \item Architecture implemented in PyTorch 1.11 and available on LINK GITHUB
+    \item Code: Architecture implemented in PyTorch 1.11 and available on LINK GITHUB
 \end{itemize}
 
-\subsection{Perfect model framework}
+\subsection{Perfect model framework}\label{subsec:perfect-model}
 \begin{itemize}
-    \item The authors of~\cite{Kittel} trained their U-Net emulator in a \textit{perfect model framework} where both inputs and outputs to the model come from the same RCM simulation. They give several reasons for this: 
+    \item The authors of~\cite{Kittel} trained their Emulator in a \textit{perfect model framework} where both inputs and outputs of the Machine Learning model come from the same RCM simulation. 
+    \item Why:
     \begin{itemize}
-        \item the aim of the study is to learn the downscaling function of the RCM
-        \item for this, we need perfect consistency (temporal and spatial correlation) between low-resolution inputs and a high-resolution targets. Otherwise, the emulator will try to learn a non-existing or non-exact relationship
-        \item this is not guaranteed between GCM and RCM because of large scale biases and inconsistencies. 
+        \item Their Emulator aims to learn the downscaling function $F$ of the RCM in Eq.~\ref{eq:emulator-equation}.
+        \item For this, the model needs perfect consistency (high temporal and spatial correlation) between the low-resolution inputs $X$ and the high-resolution target $Y$. Otherwise, the emulator will try to learn a non-existing or non-exact relationship between $X$ and $Y$.
+        \item Because of large-scale biases and inconsistencies between GCM and RCM variables, a perfect consistency cannot be guaranteed.
     \end{itemize}
-    \item We follow the same reasoning, because of this, we create GCM-like features ($\operatorname{UPRCM}$) by upscaling RCM features to GCM resolution (about 68x206km) with conservative interpolation (Fig.~\ref{fig:training-data-flow}). 
-    \item In a second step, these UPRCM outputs are smoothed by a 3x3 moving average filter. This allows the grid of the GCM to be conserved, but each point contains now smoother information and this further ensures to delete local scale information which might persist through the upscaling~\cite{Doury, Klaver2020}. (The authors of~\cite{Doury, Klaver2020} argue that the effective resolution of climate models is often larger (about 3 times) than its nominal resolution and that for this reason a GCM cannot be trusted at its own horizontal resolution but only at a coarser resolution.)
+    \item Creation of UPRCM: 
+    \begin{itemize}
+        \item To test the effect of this training framework on our Emulator, we follow the procedure outlined in~\cite{Doury} and create "GCM-like" features ($\operatorname{UPRCM}$).
+        \item In a first step, RCM features are upscaled to GCM resolution ($68\times206$ km) through conservative interpolation. 
+        \item In a second step, the upscaled RCM features are smoothed with a $3\times3$ moving average filter. This filter conserves the GCM grid, but each point now contains smoother information, and this further ensures the removal of local-scale information that might persist through the upscaling~\cite{Doury, Klaver2020}.
+    \end{itemize}
 \end{itemize}
 
 \section{Training}\label{subsec:training}
 \begin{itemize}
-    \item Input to model: Each observation given to the emulator is a month $t$ and is an array $X \in I \times J \times C_1$, where the two first dimensions are the spatial coordinates and the number of channels $C_1$ are the different atmospheric variables chosen as predictors, and its corresponding one dimensional $Z \in C_2$ (Fig.~\ref{fig:example-features}).
+    \item Input to model: As aforementioned in~\ref{subsec:features}, each observation given to the Emulator are features $X_t$ and $Z_t$ for a month $t$. $X_t \in I \times J \times C_1$ is an array, where the two first dimensions are the spatial coordinates of the input domain, and the number of channels $C_1$ are the different atmospheric variables chosen as predictors. $Z_t \in C_2$ is its corresponding temporal encoding (Fig.~\ref{fig:example-features}).
+    \item UPRCM and GCM: we train two Emulators. The first Emulator ($\operatorname{\hat{F}_U}$) follows the perfect model framework (~\ref{subsec:perfect-model}) and is trained using low-resolution inputs coming from the RCM simulation (UPRCM). In a second step, we train another Emulator ($\operatorname{\hat{F}_G}$) with coarse features that directly come from the GCM. 
+    \item Why: The perfect model framework allows us to evaluate how the U-Net performs when it has to learn only the downscaling function of the RCM. In the second training set, we want to see whether the model can learn the underlying dynamics, despite inconsistencies and biases, between GCM and RCM. 
+    \item Loss: 
+    \begin{itemize}
+        \item In~\cite{Doury}, the authors propose to view the problem as a regression and used Mean Squared Error (MSE) as a loss function. For our Emulator, using MSE performed poorly and it did not seem appropriate to our setting. 
+        \item As aforementioned, the scales of SMB values vary greatly across the target domain. For example, dry inland points have very small annual variations of SMB with maximum values reaching under 2 [mmWe/day], while a point on the west coast may reach low extremes of -20 [mmWe/day]. In this unbalanced setting, MSE will penalize the ill-fitting of low SMB regions less than for points with high annual SMB.  
+        \item For this reason, we need the points to be brought on the same scale and so we chose to use a normalised RMSE (NRMSE) loss. Normalizing the RMSE facilitates the comparison between datasets with different scales such as is our case. At each pixel location $p$ in the target domain $\mathcal{E}$, we calculate the NRMSE between the predicted values $\widehat{Y_{p}}$ and the ground truth $Y_{p}$:
+        \begin{align}
+        \operatorname{NRMSE}\left(Y_{p},\widehat{Y_{p}}\right) &= \frac{RMSE}{Y_{\max} - Y_{\min}} \\
+         &=\frac{\sqrt{\frac{1}{T}\sum_{t}(\hat{y}_{p}^{t}-y^{t}_{p})^2}}{Y_{\max} - Y_{\min}}   \;\;\;\; \forall p \in \mathcal{E} 
+        \end{align}
+        where $\hat{y}_{p}^{t}$ is the SMB value predicted at location $p\in \mathcal{D} $ and time step $t\in T$ and $Y_{\max}$, $Y_{\min}$ are respectively the maximum and minimum value of SMB over $T$ and $\mathcal{E}$.
+        \item Other parameters: The model is trained with features from 1980-2090, a batch-size of 32 and over 50 epochs using early stopping and a learning-rate scheduler that reduces the learning rate on loss plateaus (starting with $\operatorname{LR} = 0.005$). With this setting, the Emulators $\hat{F}_U$ and $\hat{F}_G$ respectively train for 34 and 36 epochs before stopping. 
+    \end{itemize}
 \end{itemize}
 
-\subsection{Perfect model framework}\label{subsec:perfect-model-training}
+\section{Evaluation}\label{sec:evaluation}
+% evaluation framework
 \begin{figure}[!t]
   \centering
   \includegraphics[width=\columnwidth]{images/evaluation_framework.png}
@@ -292,20 +312,6 @@ where $\bar{Z}_{\mathrm{ref},z}$ and $\sigma(Z_{\mathrm{ref},z})$ are respective
   \vspace{-3mm}
   \label{fig:evaluation-framework}
 \end{figure}
-
-
-\subsection{Loss}\label{subsec:loss}
-As a loss, we use the same as the authors of~\cite{Doury} that propose to view the problem as a regression and used Mean Squared Error (MSE). At each pixel location $p$ in domain $\mathcal{D}$, the MSE measures the average squared difference between the predicted values $\widehat{Y_{p}}$ and the ground truth $Y_{p}$:
-\begin{equation}
-        \operatorname{MSE}\left(Y_{p},\widehat{Y_{p}}\right) = \frac{1}{T}\sum_{t}(\hat{y}_{p}^{t}-y^{t}_{p})^2   \;\;\;\; \forall p \in \mathcal{D} 
-\end{equation}
-where $\hat{y}_{p}^{t}$ is the SMB value predicted at location $p\in \mathcal{D} $ and time step $t$.
-
-\subsection{Early stopping}
-\subsection{LR scheduler}
-
-
-\section{Evaluation}\label{sec:evaluation}
 
 \subsection{Framework}\label{subsec:evaluation-framework}
 As previously mentioned in~\ref{subsec:perfect-model-training}, the model is trained in a perfect model framework, where both its low resolution inputs and high resolution output come from the same regional climate model.
