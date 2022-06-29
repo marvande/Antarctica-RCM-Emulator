@@ -24,6 +24,7 @@
 \usepackage{gensymb}
 \usepackage{stmaryrd}
 \usepackage{verbatim}
+\usepackage{siunitx}
 
 
 \usepackage{hyperref}
@@ -126,7 +127,7 @@ Training of model
     \item Training using existing RCM simulations → learn large scale/local scale relationship in different climates and in future climate
     \item Training in perfect model framework: input and output to ML model come from same RCM simulation → focus on downscaling function
     \item Input variable: daily large-scale and low-resolution RCM information (upsampled to GCM like resolution)
-    \item Output variable: daily maps of TAS at RCM resolution (~12km)
+    \item Output variable: daily maps of TAS at RCM resolution (~12 \si{mmWe/day}\sci{km})
     \item Emulator is RCM-dependent as downscaling function depends on RCM choice
 \end{itemize}
 Results
@@ -156,7 +157,7 @@ Results
 \begin{equation}\label{eq:emulator-equation}
     Y = \operatorname{F}(X) \;\;\;\; X\subset\mathcal{D}, Y\subset\mathcal{E}
     \end{equation}
-where $X$ are low-resolution variables from a global climate simulation over an input domain $\mathcal{D}$ and $Y$ is a high resolution surface variable inside a regional climate simulation over a target domain $\mathcal{E}$. 
+where $X$ are low-resolution variables from a global climate simulation over an input domain $\mathcal{D}$ and $Y$ is a high-resolution surface variable inside a regional climate model over a target domain $\mathcal{E}$. 
 \item Flow of model and methods section: 
 \begin{itemize}
     \item Data: climate models used -> target and input domains -> variables chosen (input features)
@@ -167,12 +168,12 @@ where $X$ are low-resolution variables from a global climate simulation over an 
 \section{Data}\label{sec:data}
 \subsection{Climate model}
 \begin{itemize}
-    \item RCM: RCM variable emulated by $\hat{F}$ is the monthly surface mass balance (SMB) values from MAR(ACCESS1.3), a regional downscaling of the global climate model ACCESS 1.3 (CMIP5~\cite{ACCESS13, CMIP5}) by the Modèle Atmosphérique Régional (MAR). 
-    \item MAR: MAR is known for its accurate modelling of physical processes in the polar regions such as surface mass balance, air-snow interactions, and atmospheric circulation over ice sheets~\cite{MAR}. 
-    \item Why: We chose MAR(ACCESS 1.3) because according to the studies conducted in~\cite{Kittel, Agosta2015} that compared several climate models, ACCESS1.3 and more specifically MAR(ERA5) were the global and regional climate models that most accurately represented the present Antarctic climate in comparison to ERA-Interim and MAR(ERA5). 
+   \item RCM: RCM variable emulated by $\hat{F}$ is the monthly surface mass balance (SMB) values from MAR(ACCESS1.3), a regional downscaling of the global climate model ACCESS 1.3 (CMIP5~\cite{ACCESS13, CMIP5}) by the Modèle Atmosphérique Régional (MAR). 
+    \item MAR is known for accurately modeling physical processes in polar regions such as surface mass balance, air-snow interactions, and atmospheric circulation over ice sheets~\cite{MAR}. 
+    \item Why: According to the comparison of climate model studies conducted in~\cite{Kittel, Agosta2015}, ACCESS 1.3 and MAR(ACCESS 1.3) were the models that most accurately represented the present Antarctic climate in comparison to ERA-Interim. For this reason, we chose MAR(ACCESS 1.3) and its corresponding global climate model as climate simulations for our Emulator.  
     \item Time-frame: historical values from 1980-2006 and future climate simulation RCP 8.5~\cite{Moss2010} from 2006-2100. 
-    \item Grid and resolution: RCM grid in south polar stereographic coordinates of $35 \times 35$ km resolution. GCM resolution of 1.25° latitude by 1.875° longitude (approximately $68 \times 206$ km), using a staggered Arakawa C grid~\cite{ACCESS13, ACCESS13_2}. 
-    \item Reprojection: to have both climate models in the same projection system, we re-project the GCM to polar stereographic coordinates (see Annex for details [REF ANNEX]). 
+    \item Grid and resolution: RCM grid in south polar stereographic coordinates of $35 \times 35$ \si{mmWe/day}\sci{km} resolution. GCM resolution of 1.25° latitude by 1.875° longitude (approximately $68 \times 206$ \si{mmWe/day}\sci{km}), using a staggered Arakawa C grid~\cite{ACCESS13, ACCESS13_2}. 
+    \item Reprojection: to have both regional and global climate models in the same projection system, we project the GCM to polar stereographic coordinates (see Annex for details [REF ANNEX]). 
 \end{itemize}
 
 \begin{figure}[!t]
@@ -186,19 +187,19 @@ where $X$ are low-resolution variables from a global climate simulation over an 
 
 \subsection{Target and input domain}
 \begin{itemize}
-    \item Target domain: The target domain used for this model is a grid box of $64 \times 64$ at 35km resolution that contains the Antarctic Peninsula in West Antarctica. 
+   \item Target domain: The target domain used for this model is a grid box of $64 \times 64$ at 35 \si{mmWe/day}\sci{km} resolution that contains the Antarctic Peninsula in West Antarctica. 
     \item Antarctic peninsula: 
     \begin{itemize}
         \item The Antarctic Peninsula is the most northerly part of Antarctica
-        \item It covers approximately 5 million square kilometres and is mainly covered by ice. Major ice shelves include the Larsen and Ronne ice shelves.
+        \item It covers approximately 5 million square kilometers and is mainly covered by ice. Major ice shelves include the Larsen and Ronne ice shelves.
         \item It is very mountainous, with its highest peaks rising to about 3'000 m
-        \item temperature: it has the mildest climates within this continent. Its temperatures are warmest in January, averaging 1 to 2$\degree C$, and coldest in June, averages from -15 to -20$\degree C$~\cite{AntarcticPeninsula}
-        \item precipitation: varies greatly within the Antarctic Peninsula. The tip of peninsula has highest levels of precipitation with 35–50cm per year. On the west coast and along its northeast coast, occasional rain leaves precipitation at 35cm. Along the east coast and the interior of Antarctica, climate is drier with precipitation that ranges from 10-15 cm~\cite{antarctic-climate, antarctic-climate-2}
+        \item Temperature: it has the mildest climates on this continent. Its temperatures are warmest in January, averaging 1 to 2 $\degree C$, and coldest in June, averaging from -15 to -20 $\degree C$~\cite{AntarcticPeninsula}
+        \item Precipitation: varies greatly within the Antarctic Peninsula. The peninsula's tip has the highest precipitation levels, with 35–50 cm per year. On the west coast and northeast coast, occasional rain leaves precipitation at 35 cm. Along the east coast and the interior of Antarctica, the climate is drier, with precipitation that ranges from 10-15 cm~\cite{antarctic-climate, antarctic-climate-2}
     \end{itemize} 
     \item Why this region: 
     \begin{itemize}
         \item Because of the specific patterns of climate variables such as temperature and precipitation, the Antarctic Peninsula has a high annual and geographical variability in SMB values. 
-        \item This shows when looking at mean SMB values as in Fig.~\ref{fig:region-of-choice}. The tip of the peninsula and its west coast show higher values than the rest. Mean SMB values range from -9.2 to 9.9 mmWe/day and the extremes observed in this region over the whole time-frame of 1980-2100 are a minimum of -59.0 mmWe/day and a maximum of 30.2 mmWe/day. 
+        \item This shows when looking at mean SMB values as in Fig.~\ref{fig:region-of-choice}. The peninsula's tip and west coast offer higher values than the rest. Mean SMB values range from -9.2 to 9.9 \si{mmWe/day} and the extremes observed in this region over the whole time frame of 1980-2100 are a minimum of -59.0 \si{mmWe/day} and a maximum of 30.2 \si{mmWe/day}. 
         \item All of this makes this region very interesting to us because we want to see how the Emulator adapts to different annual patterns of SMB over our target domain.  
     \end{itemize}
     \item Input domain: $48\times25$ grid box (Fig.~\ref{fig:region-of-choice}) defined around the target domain that is resized to $32\times 32$ by bilinear interpolation so as to give the model a square input.
@@ -209,32 +210,38 @@ where $X$ are low-resolution variables from a global climate simulation over an 
 \begin{itemize}
     \item The Emulator receives as input features $(X, Z)$ that consist of two-dimensional variable $X$, and one-dimensional $Z$ (Table~\ref{tab:features}). 
     \item X: The two-dimensional feature $X$ contains eight different atmospheric variables measured daily at (near) surface level. After a monthly mean aggregation, the frequency of variables is monthly.
-    \item Normalisation of X: These variables are normalised according to their spatial mean $\bar{X}_{t,x}$ and standard deviation $\sigma(X_{t,x})$:
+    \item Normalisation of X: These variables are normalised according to their spatial mean $\bar{X}_{t,x}$ and standard deviation $\sigma(X_{t,x})$ for eac time-step $t\in T$:
+    
     \begin{equation}\label{eq:normalisation-X}
     \tilde{X}_{t,i,j,x} = \frac{X_{t,i,j,x}-\bar{X}_{t,x}}{\sigma(X_{t,x})} \;\;\;\; t\in T, \forall (i,j) \in \mathcal{D}, x\in C_1
 \end{equation}
-    \item (These eight variables were present both in our RCM and GCM data. In terms of feature selection, we decided to follow the same procedure as in~\cite{Doury} and give all available variables to the model and let it find the right combination to be used [COMPLETE WITH FEATURE SELECTION RESULTS].)
+    \item Feature selection: In terms of feature selection, we decided to follow the same procedure as in~\cite{Doury} and give all available variables to the Emulator and later evaluate their feature importance. 
     
-\item Z: The one-dimensional variable $Z$ includes time-series of spatial means $\bar{X}_{t,x}$ and standard deviations $\sigma(X_{t,x})$ for each atmospheric variable $x\in C_1$.
-\item Temporal encoding of Z: 
-\begin{itemize}
-    \item because the 2D variables $X$ are normalised at each time step by their spatial mean and so don’t carry any temporal information.
-    \item It also includes a cosinus, sinus vector to encode the information about the month of the year.
-    \begin{equation}
-        \operatorname{cos}\left(\frac{2\pi t}{12}\right);\; \operatorname{sin}\left(\frac{2\pi t}{12}\right) \;\;\;\; \forall t\in T
-    \end{equation}
-\end{itemize}
+\item Temporal encoding Z: \begin{itemize}
+    \item 
+The one-dimensional variable $Z$ includes the time-series of spatial means $\bar{X}_{t,x}$ and standard deviations $\sigma(X_{t,x})$ for each atmospheric variable $x\in C_1$.
 
-\item Overall Z: 
-\begin{equation}
+\item It also includes a cosine, sine vector to encode the information about the month of the year.
+    \begin{equation*}
+       \operatorname{cos}\left(\frac{2\pi t}{12}\right);\; \operatorname{sin}\left(\frac{2\pi t}{12}\right) \;\;\;\; \forall t\in T
+    \end{equation*}
+    
+    \item Overall this gives the following equation for $Z$:
+    \begin{equation}\label{eq:Z}
     Z = \left[ \bar{X}_{t\in T, x\in C_1}, \sigma\left(X_{t\in T, x\in C_1}\right), \operatorname{cos}, \operatorname{sin} \right] \subset T \times C_2
 \end{equation}
+    \item Why: because the $X$ variables are normalized at each time step by their spatial mean, they do not carry any temporal encoding. Adding Z to the model allows it to have access to this information. 
+    
 
 \item Normalisation of Z: each of the spatial means $\bar{X}_{t,x}$ and standard deviations $\sigma(X_{t,x})$ in Z are normalised according to a reference period ($\mathrm{ref}=$1980-2000)~\cite{Doury}:
 \begin{equation}\label{eq:normalisation-Z}
     \tilde{Z}_{t,z} = \frac{Z_{t,z}-\bar{Z}_{\mathrm{\mathrm{ref}},z}}{\sigma(Z_{\mathrm{ref},z})} \;\;\;\; t\in T, z\in C_2
 \end{equation}
 where $\bar{Z}_{\mathrm{ref},z}$ and $\sigma(Z_{\mathrm{ref},z})$ are respectively the temporal mean and standard deviation of the spatial means or standard deviations of $X_{\mathrm{ref}, x} \subset T_{\mathrm{ref}}\times C_1$.
+\end{itemize}
+
+
+
 \end{itemize}
 
 \input{tables/variables_table}
@@ -261,7 +268,7 @@ where $\bar{Z}_{\mathrm{ref},z}$ and $\sigma(Z_{\mathrm{ref},z})$ are respective
     \item Bottom of U-Net: At the bottom of the U-Net, encoded spatial information from $X_t$ and temporal information from $Z_t$ are concatenated. The corresponding 1D input $Z_t$ of $X_t$ first goes through a fully dense neural network to reach the same number of channels as the output of the last layer of the Encoder. Then, it is concatenated with the Encoder output at the bottom of the “U”. This constrains the U-Net to give equal importance to the spatial and temporal inputs before starting the decoding path and generating the high-resolution SMB image~\cite{Doury}. 
     \item Decoder: three parts; a 2D transposed convolution operation (green arrows) to double the image size, a concatenation of the resulting feature maps with the previous Encoder’s attention maps (white blocks) via skip-connections (grey arrows), and lastly a double depthwise-separable to half the number of channels (blue arrows). 
     \item Skip-connections: skip-connections between layers (grey arrows) make it possible to skip large sections if required and create a smoother loss surface. 
-    \item  Last layers: up-sampling layer (light blue arrow) in order to reach target size ($64\times 64$) and $1\times1$ convolution (pink arrow) to change the number of channels from $64$ to $1$, and outputs a single image representing the SMB values predicted by the network at time-step $t$.
+    \item  Last layers: up-sampling layer (light blue arrow) to reach target size ($64\times 64$) and $1\times1$ convolution (pink arrow) to change the number of channels from $64$ to $1$, and outputs a single image representing the SMB values predicted by the network at time-step $t$.
     \item Attention: Convolutional block attention modules (CBAMs, yellow arrow)~\cite{smatunet} are placed after each double convolution in the Encoder and used to detect important features over the channels and spatial regions of the inputs. In CBAMs, the attention mechanism is first applied over the channels of the image and then the spatial dimension. Note that the input to the next layer of the Encoder is not the attention feature map (white block) but the convoluted and downsampled image of the previous layer (dark blue block). This way, the original image features are preserved throughout the Encoder layers. Finally, the attention blocks are fed through skip-connections to the corresponding Decoder layer to be concatenated~\cite{smatunet}. Contrary to the DSC convolutions used in the Encoder and Decoder, CBAMs use regular convolutions.  
     \end{itemize}
     \item Code: Architecture implemented in PyTorch 1.11 and available on LINK GITHUB
@@ -269,101 +276,158 @@ where $\bar{Z}_{\mathrm{ref},z}$ and $\sigma(Z_{\mathrm{ref},z})$ are respective
 
 \subsection{Perfect model framework}\label{subsec:perfect-model}
 \begin{itemize}
-    \item The authors of~\cite{Kittel} trained their Emulator in a \textit{perfect model framework} where both inputs and outputs of the Machine Learning model come from the same RCM simulation. 
+    \item The authors of~\cite{Kittel} trained their Emulator in a \textit{perfect model framework} where both the low-resolution inputs and high-resolution SMB truth used in the Machine Learning model come from the same RCM simulation. 
     \item Why:
     \begin{itemize}
         \item Their Emulator aims to learn the downscaling function $F$ of the RCM in Eq.~\ref{eq:emulator-equation}.
-        \item For this, the model needs perfect consistency (high temporal and spatial correlation) between the low-resolution inputs $X$ and the high-resolution target $Y$. Otherwise, the emulator will try to learn a non-existing or non-exact relationship between $X$ and $Y$.
+        \item For this, the model needs perfect consistency (high temporal and spatial correlation) between the low-resolution inputs $X$ and the high-resolution target $Y$. Otherwise, the Emulator will try to learn a non-existing or non-exact relationship between $X$ and $Y$.
         \item Because of large-scale biases and inconsistencies between GCM and RCM variables, a perfect consistency cannot be guaranteed.
     \end{itemize}
     \item Creation of UPRCM: 
     \begin{itemize}
-        \item To test the effect of this training framework on our Emulator, we follow the procedure outlined in~\cite{Doury} and create "GCM-like" features ($\operatorname{UPRCM}$).
-        \item In a first step, RCM features are upscaled to GCM resolution ($68\times206$ km) through conservative interpolation. 
-        \item In a second step, the upscaled RCM features are smoothed with a $3\times3$ moving average filter. This filter conserves the GCM grid, but each point now contains smoother information, and this further ensures the removal of local-scale information that might persist through the upscaling~\cite{Doury, Klaver2020}.
+        \item To test the effect of this training framework on our Emulator, we followed the procedure outlined in~\cite{Doury} and create "GCM-like" features ($\operatorname{UPRCM}$).
+        \item In a first step, we upscaled RCM features to GCM resolution ($68\times206$ km) through conservative interpolation. 
+        \item In a second step, the upscaled RCM features were smoothed with a $3\times3$ moving average filter. This filter conserves the GCM grid, but each point now contains smoother information, and this further ensures the removal of local-scale information that might persist through the upscaling~\cite{Doury, Klaver2020}.
+    \end{itemize}
+    \item Consistency: To assess the presence of biases and inconsistencies between UPRCM and GCM features, we used two correlation statistics.  
+    \begin{itemize}
+        \item Temporal correlation: for each atmospheric variable $x\in C_1$ and point $p = (i,j)$ in the input domain $\mathcal{D}$, we calculated the Pearson correlation between the GCM and UPRCM time-series:
+        \begin{equation}\label{eq:temporal-corr}
+            \rho\left(G_{p}^x,U_{p}^x\right) = \frac{\operatorname{cov}(G_{p}^x,U_{p}^x)}{\sigma(G_{p}^x)\sigma(U_{p}^x)} \;\;\;\; \forall p \in \mathcal{D}, x\in C_1 
+        \end{equation}
+        where $G_{p}^x = \operatorname{GCM}[1:T, i, j, x]$, $U_{p}^x = \operatorname{UPRCM}[1:T, i, j, x]$, $\operatorname {cov}(\cdot)$  is the covariance and  $\sigma(\cdot)$ is the standard deviation.  
+        \item Spatial correlation: for each $x\in C_1$ and time-step $t \in T$, we calculated the spatial correlation between GCM and UPRCM images: 
+        \begin{equation}\label{eq:spatial-corr}
+            \operatorname{sc}\left(G_{t}^x,U_{t}^x\right) = \frac{\operatorname{cov}(G_{t}^x,U_{t}^x)}{\sigma(G_{t}^x)\sigma(U_{t}^x)} \;\;\;\; \forall t \in T, x\in C_1 
+        \end{equation}
+        where $G_{t}^x = \operatorname{GCM}[t,1:I,1:J,x]$ and $U_{t}^x =\operatorname{UPRCM}[t,1:I,1:J,x]$. 
     \end{itemize}
 \end{itemize}
 
 \section{Training}\label{subsec:training}
 \begin{itemize}
-    \item Input to model: As aforementioned in~\ref{subsec:features}, each observation given to the Emulator are features $X_t$ and $Z_t$ for a month $t$. $X_t \in I \times J \times C_1$ is an array, where the two first dimensions are the spatial coordinates of the input domain, and the number of channels $C_1$ are the different atmospheric variables chosen as predictors. $Z_t \in C_2$ is its corresponding temporal encoding (Fig.~\ref{fig:example-features}).
-    \item UPRCM and GCM: we train two Emulators. The first Emulator ($\operatorname{\hat{F}_U}$) follows the perfect model framework (~\ref{subsec:perfect-model}) and is trained using low-resolution inputs coming from the RCM simulation (UPRCM). In a second step, we train another Emulator ($\operatorname{\hat{F}_G}$) with coarse features that directly come from the GCM. 
-    \item Why: The perfect model framework allows us to evaluate how the U-Net performs when it has to learn only the downscaling function of the RCM. In the second training set, we want to see whether the model can learn the underlying dynamics, despite inconsistencies and biases, between GCM and RCM. 
+    \item Input to model: As aforementioned in~\ref{subsec:features}, each observation given to the Emulator are features $X_t$ and $Z_t$ for a month $t\in T$. $X_t$ is an array in $I \times J \times C_1$, where the two first dimensions are the spatial coordinates of the input domain, and the number of channels $C_1$ is the different atmospheric variables chosen as predictors. $Z_t \in C_2$ is its corresponding temporal encoding (Fig.~\ref{fig:example-features}).
+    \item UPRCM and GCM: we created two Emulators by following two scenarios. We trained the first Emulator ($\operatorname{\hat{F}_U}$) following the perfect model framework (~\ref{subsec:perfect-model}) where we used upscaled RCM features as low-resolution inputs coming (UPRCM). Then, in a second step, we trained another Emulator ($\operatorname{\hat{F}_G}$) with coarse features directly from the GCM. 
+    \item Why: The perfect model framework allowed us to evaluate how the U-Net performs when it has to learn only the downscaling function of the RCM. In the second training set, we wanted to see whether the model could learn the underlying dynamics, despite inconsistencies and biases, between GCM and RCM. 
     \item Loss: 
     \begin{itemize}
-        \item In~\cite{Doury}, the authors propose to view the problem as a regression and used Mean Squared Error (MSE) as a loss function. For our Emulator, using MSE performed poorly and it did not seem appropriate to our setting. 
-        \item As aforementioned, the scales of SMB values vary greatly across the target domain. For example, dry inland points have very small annual variations of SMB with maximum values reaching under 2 [mmWe/day], while a point on the west coast may reach low extremes of -20 [mmWe/day]. In this unbalanced setting, MSE will penalize the ill-fitting of low SMB regions less than for points with high annual SMB.  
-        \item For this reason, we need the points to be brought on the same scale and so we chose to use a normalised RMSE (NRMSE) loss. Normalizing the RMSE facilitates the comparison between datasets with different scales such as is our case. At each pixel location $p$ in the target domain $\mathcal{E}$, we calculate the NRMSE between the predicted values $\widehat{Y_{p}}$ and the ground truth $Y_{p}$:
+        \item In~\cite{Doury}, the authors propose to view the problem as regression and use Mean Squared Error (MSE) as a loss function. However, our Emulator performed poorly using an MSE loss and did not seem appropriate to our setting. 
+        \item As aforementioned, the scale of SMB values vary significantly across the target domain. For example, dry inland points have minimal annual variations of SMB, with maximum values reaching under $2$ \si{mmWe/day}, while a point on the west coast can reach low extremes of $-20$ \si{mmWe/day}. In this unbalanced setting, MSE penalizes the ill-fitting of low SMB regions less than points with high values of SMB.  
+        \item For this reason, we needed the points to be brought on the same scale when applying a loss function, so we chose to use a normalized RMSE (NRMSE) loss. Normalizing the RMSE facilitates comparing datasets with different scales, as in our case. 
+        \item Equation: For each observation i.e., each time step $t$, given to the Emulator, we calculate the NRMSE loss between the predicted SMB value $\hat{Y}^{t}$ and the target $Y^{t}$ over all positions $p$ in the target domain $\mathcal{E}$:
         \begin{align}
-        \operatorname{NRMSE}\left(Y_{p},\widehat{Y_{p}}\right) &= \frac{RMSE}{Y_{\max} - Y_{\min}} \\
-         &=\frac{\sqrt{\frac{1}{T}\sum_{t}(\hat{y}_{p}^{t}-y^{t}_{p})^2}}{Y_{\max} - Y_{\min}}   \;\;\;\; \forall p \in \mathcal{E} 
+        \operatorname{NRMSE}\left(Y^{t},\hat{Y}^{t}\right) &= \frac{RMSE}{Y_{\max} - Y_{\min}} \\
+         &=\frac{\sqrt{\frac{1}{P}\sum_{p}(\hat{y}_{p}^{t}-y^{t}_{p})^2}}{Y_{\max} - Y_{\min}}   \;\;\;\; \forall t \in T
         \end{align}
-        where $\hat{y}_{p}^{t}$ is the SMB value predicted at location $p\in \mathcal{D} $ and time step $t\in T$ and $Y_{\max}$, $Y_{\min}$ are respectively the maximum and minimum value of SMB over $T$ and $\mathcal{E}$.
-        \item Other parameters: The model is trained with features from 1980-2090, a batch-size of 32 and over 50 epochs using early stopping and a learning-rate scheduler that reduces the learning rate on loss plateaus (starting with $\operatorname{LR} = 0.005$). With this setting, the Emulators $\hat{F}_U$ and $\hat{F}_G$ respectively train for 34 and 36 epochs before stopping. 
+        where $\hat{y}_{p}^{t}$ is the SMB value predicted at location $p\in \mathcal{E}$ and time $t \in T$, $P$ the number of points in $\mathcal{E}$ and $Y_{\max}$, $Y_{\min}$ are respectively the maximum and minimum value of SMB over $T$ and $\mathcal{E}$.
     \end{itemize}
+    \item Other training parameters: We trained both Emulators using features from 1980-2090, an 80\%-20\% training-validation split, a batch size of 32 and over 50 epochs. We used using early stopping and a learning-rate scheduler that reduced the learning rate on loss plateaus (starting with $\operatorname{LR} = 0.005$). With this setting, Emulators $\hat{F}_U$ and $\hat{F}_G$ trained for 34 and 36 epochs before stopping. 
 \end{itemize}
 
 \section{Evaluation}\label{sec:evaluation}
+
 % evaluation framework
 \begin{figure}[!t]
   \centering
   \includegraphics[width=\columnwidth]{images/evaluation_framework.png}
-  \caption []{\small Evaluation framework. Left: perfect world scenario where both the input (UPRCM) and output of the model come from the RCM simulation. Right: GCM scenario where input comes from GCM and output from RCM. Evaluation metrics used described in~\ref{subsec:evaluation-metrics}.}
+  \caption []{\small Evaluation frameworks. Left: perfect world scenario where the LR input and HR truth given to the Emulator come from the RCM simulation. Right: GCM scenario where LR features come from the GCM and HR truth from the RCM. Evaluation metrics used described in~\ref{subsec:evaluation-metrics}.}
   \vspace{-3mm}
   \label{fig:evaluation-framework}
 \end{figure}
 
-\subsection{Framework}\label{subsec:evaluation-framework}
-As previously mentioned in~\ref{subsec:perfect-model-training}, the model is trained in a perfect model framework, where both its low resolution inputs and high resolution output come from the same regional climate model.
 \begin{itemize}
-\item If RCP 4.5 not available, train model on 90\% of time series i.e. from 1980 till 2080 and evaluate on future scenario 2080-2100. 
-    \item If RCP 4.5. avaible, train on RCP 8.5 and evaluate on whole time series of RCP 4.5.
-    \item In a second evaluation step, evaluate with inputs from GCM 
+    \item Train and test set: we separate the time-frame $T$ into an approximate 90\%-10\% split with a train and test period of $T_{train} = 1980-2090$ and $T_{test} = 2090-2100$. We arbitrarily chose to put the test period at the end of the climate model's time-frame out of simplicity, but we could also have taken the test samples elsewhere as long as they are consecutive.    
+    \item Evaluation of $\hat{F}_U$: Emulator $\hat{F}_U$ is first evaluated in the perfect model with UPRCM features and in a second step, on GCM inputs. 
+    \item Evaluation of $\hat{F}_G$: Because we trained this Emulator on the GCM, we evaluated $\hat{F}_G$ directly on test features from the GCM. 
+    \item We illustrate the two evaluation frameworks in Fig.~\ref{fig:evaluation-framework}.
+    
+\end{itemize}
+
+\subsection{Evaluation metrics}\label{subsec:evaluation-metrics}
+For each Emulator $\hat{F}_{(\cdot)}$ and point $p \in \mathcal{E}$, we compared the target SMB time series $Y_{p}$ to the predicted values $\widehat{Y_{p}}$ over the time period $T_{test}$. For this, we used different statistics:
+
+\subsubsection{RMSE}\label{subsubsec:rmse}
+Root Mean Squared Error (RMSE) measures the square root of the average squared differences between predicted and target observations. It is also defined as the square of the mean squared error (MSE):
+\begin{align}\label{eq:RMSE}
+        \operatorname{RMSE}\left(Y_{p},\widehat{Y_{p}}\right) & = \sqrt{\operatorname{MSE}\left(Y_{p},\widehat{Y_{p}}\right)} \\ & = \sqrt{\frac{1}{T}\sum_{t}(\hat{y}_{p}^{t}-y^{t}_{p})^2} & \forall p \in \mathcal{E} 
+\end{align}
+where $\hat{y}_{p}^{t}$ is predicted SMB value and $y^{t}_{p}$ the true SMB value at location $p\in \mathcal{E} $ and time step $t\in T$. 
+
+\subsubsection{Pearson correlation}\label{subsubsec:pearson-corr}
+The Pearson correlation coefficient measures how two continuous time series change over time as a number between -1 (negatively correlated), 0 (uncorrelated), and 1 (perfectly correlated).
+\begin{align}
+    \operatorname{r}\left(Y_{p},\widehat{Y_{p}}\right) = \frac{\operatorname{cov}(Y_{p},\widehat{Y_{p}})}{\sigma(Y_{p})\sigma(\widehat{Y_{p}})} \;\;\;\; \forall p \in \mathcal{E} 
+\end{align}
+where $\operatorname {cov}(\cdot)$  is the covariance and  $\sigma(\cdot)$ is the standard deviation.
+
+\subsubsection{Wasserstein distance}\label{subsubsec:wasserstein}
+The Wasserstein distance measures the distance between two probability density functions $f(\cdotp)$, in our case $f(Y_p)$ and $f(\widehat{Y_p})$. It is the numerical cost of an optimal transportation problem i.e., the cost of the optimal transport plan~\cite{villani} for moving the mass in the predicted
+measure to match that in the target~\cite{wasserstein1}. 
+\begin{equation}
+    \operatorname{W}\left(f(Y_p),f(\widehat{Y_p})\right) = \sum_{t}|y^{t}_{p}-\hat{y}_{p}^{t}| \;\;\;\; \forall p \in \mathcal{E}
+\end{equation}
+where $\hat{y}_{p}^{t}$ is the predicted SMB value and $y^{t}_{p}$ the true SMB value at location $p\in \mathcal{E} $ and time step $t\in T$. 
+
+\subsection{Feature importance}
+
+
+\chapter{Results}
+%%%%%%%%%%%%%%%%%%%%
+
+\begin{itemize}
+    \item Flow of Results section:
+    \begin{itemize}
+    \item Consistency: Start by evaluating consistency between GCM and UPRCM variables. Why? This way we know how much bias between LR and HR variables the Emulators are dealing with and whether a perfect model framework is necessary. Interesting to know for when UPRCM-Emulator gets GCM inputs and interesting for GCM-Emulator. 
+        \item Global ML metrics: move on to evaluate models with metrics over whole target domain. Why? Start global and use typical ML metrics to evaluate performance of models.  
+        \item Geoplots: Look at actual prediction images made by Emulators. Why? Good visual aid to assess which regions are best emulated. Can look at details and precision of reconstruction.   
+        \item Zoom in on specific points with their time-series and annual SMB values. Why? Look at how the models adapt to different patterns and intensities of SMB. 
+        \item Feature importance for both Emulators. Why? From a physical point of view, interesting to see which atmospheric variables play the biggest role in predicting SMB. 
+        
+    \end{itemize} 
 \end{itemize}
 
 
-\subsection{Evaluation metrics}\label{subsec:evaluation-metrics}
-At each position $p$ in domain $\mathcal{D} $ of the regional climate model grid, the truth series ($Y_{p}$) from the regional climate model are compared the predicted values $\widehat{Y_{p}}= \theta(Y_{p})$ by the emulator $\theta$. For this, we use the same statistical scores the authors of~\cite{Doury} used to evaluate their downscaling model. Each of these metrics is computed over the complete period from $t_{0}=31.01.1980$ to $t_{N}=31.12.2100$:
-\subsubsection{RMSE}\label{subsubsec:rmse}
-The Root Mean Squared Error (RMSE) is a measure of the difference between predictions of an estimator and the observed values. RMSE is the square root of the average of squared differences between prediction and actual observation. It is also defined as the square of the Mean Squared Error (MSE):
-\begin{align}
-        \operatorname{RMSE}\left(Y_{p},\widehat{Y_{p}}\right) & = \sqrt{\operatorname{MSE}\left(Y_{p},\widehat{Y_{p}}\right)} \\ & = \sqrt{\frac{1}{T}\sum_{t}(\hat{y}_{p}^{t}-y^{t}_{p})^2} & \forall p \in \mathcal{D} 
-\end{align}
-where $\hat{y}_{p}^{t}$ is predicted SMB value and $y^{t}_{p}$ the true SMB value at location $p\in \mathcal{D} $ and time step $t$. The amplitudes of SMB time series varies according to geographical location i.e., some locations that are very dry may have SMB values that vary between 0 and 1 mmWe/day while others may go up to 10 mmWe/day. For this reason, we also compute the normalised RMSE (NRMSE):
-\begin{align}
-        \operatorname{NRMSE}\left(Y_{p},\widehat{Y_{p}}\right) & = \frac{\operatorname{RMSE}\left(Y_{p},\widehat{Y_{p}}\right)}{Y_{max}(p) - Y_{min}(p)} \\ & = \frac{\frac{1}{T}\sum_{t}(\hat{y}_{p}^{t}-y^{t}_{p})^2}{Y_{max} - Y_{min}} & \forall p \in \mathcal{D} 
-\end{align}
-where $Y_{max}$ and $Y_{min}$ are respectively the maximum and minimum true SMB values over the whole domain $\mathcal{D}$. 
+\section{Bias between RCM and GCM variables}
+To assess the bias and inconsistencies between the large-scale and fine-scale atmospheric variables, we calculated the temporal and spatial correlation between UPRCM and GCM variables (Eq.~\ref{eq:spatial-corr} and Eq.\ref{eq:temporal-corr}). 
+\begin{itemize}
+    \item Fig.~\ref{fig:temp-corr-GCM-UPRCM}: except for the two wind variables (NW, EW), the temporal correlation between URPCM and GCM features is high. Suggests that, except for winds, there is little inconsistencies in the seasonal patterns between regional and global variables.For the two winds, temporal patterns show inconsistencies over the mainland and Peninsula. We suspect that, due to difference in high and low pressure systems, the regional and global scale wind variables show different temporal patterns. 
+    \item Fig.~\ref{fig:spatial-corr-GCM-UPRCM} and Fig.~\ref{fig:spatial-corr-GCM-RCM-ex}: variables like radiation, humidity, temperature and precipitation show significant changes in spatial correlation between UPRCM and GCM. Most flagrant variable is SWD with a highly oscillating annual pattern. Looking at individual months in Fig.~\ref{fig:spatial-corr-GCM-RCM-ex}, we see that sc is low for SWD because GCM predicts higher values of radiation inland than RCM. For precipitation, see that in the worst case, patterns in UPRCM and GCM are completely different (left). While in best case, RCM is a lot more precise in predicting precipitation patterns and overall correlation very low for this variable. Notice also boundaries of RCM model show strange streaks in patterns, but know problem for climate models.  
+    \item Overall, see that problems in consistency between large scale and local scale variables. Might confuse models and might justify the use of perfect model framework to train. 
+\end{itemize}
 
 
-\subsubsection{Pearson correlation}\label{subsubsec:pearson}
-Pearson correlation coefficient measures how two continuous signals co-vary over time and indicate the linear relationship as a number between -1 (negatively correlated) to 0 (not correlated) to 1 (perfectly correlated).
-\begin{align}
-    \rho\left(Y_{p},\widehat{Y_{p}}\right) = \frac{\operatorname{cov}(Y_{p},\widehat{Y_{p}})}{\sigma_{Y_{p}}\sigma_{\widehat{Y_{p}}}} \;\;\;\; \forall p \in (x,y)
-\end{align}
-where $\operatorname {cov}$  is the covariance and  $\sigma$ is the standard deviation.
-
-\subsubsection{Wasserstein distance}\label{subsubsec:wasserstein}
-The Wasserstein distance is the numerical cost of an optimal transportation problem i.e., the cost of
-the optimal transport plan~\cite{villani} for moving the mass in the predicted
-measure to match that in the target~\cite{wasserstein1}. It measures the distance between two probability density functions $f(\cdotp)$, in our case $f(Y_p)$ and $f(\widehat{Y_p})$.
-\begin{equation}
-    \operatorname{W}\left(f(Y_p),f(\widehat{Y_p})\right) = \sum_{t}|y^{t}_{p}-\hat{y}_{p}^{t}| \;\;\;\; \forall p \in (x,y)
-\end{equation}
- where $\hat{y}_{p}^{t}$ is the SMB value predicted at location $p\in (x,y)$ and time step $t$.
-
-\subsubsection{Variance ratio}\label{subsubsec:variance-ratio}
- The variance ratio measures the performance of the emulator in reproducing local monthly variability. 
- \begin{equation}
-     \operatorname{V}(Y_{p},\widehat{Y_{p}}) = \frac{\operatorname{Var}(\widehat{Y_{p}})}{\operatorname{Var}(Y_{p})}\cdot100
- \end{equation}
- where $\operatorname{Var}(Y)$ is the variance $\sigma^2$ of sample $Y$. The authors of~\cite{Doury} express this measure as a percentage. 
-
+\begin{figure}[tbp]
+        \centering
+        \begin{subfigure}[b]{\columnwidth}
+            \centering \includegraphics[width=\textwidth]{doc/Thesis-latex/images/results/temporalCorr_RCM_GCM.png}
+            \caption[]%
+            {{\small Temporal correlation over test period}}    
+          \label{fig:temp-corr-GCM-UPRCM}
+        \end{subfigure}
+        \hfill
+            \begin{subfigure}[b]{\columnwidth}
+            \centering \includegraphics[width=\textwidth]{doc/Thesis-latex/images/results/spatialCorr_TS_RCM_GCM.png}
+            \caption[]%
+            {{\small Spatial correlation over test period}}    
+          \label{fig:spatial-corr-GCM-UPRCM}
+        \end{subfigure}
+        \hfill
+        \begin{subfigure}[b]{\columnwidth}  
+            \centering 
+            \includegraphics[width=\textwidth]{doc/Thesis-latex/images/results/spatialCorr_RCM_GCM.png}
+            \caption[]%
+            {{\small Spatial correlation for individual variables and months}}  \label{fig:spatial-corr-GCM-RCM-ex}
+        \end{subfigure}
+        \hfill
+        \caption[]
+        {\small Temporal (a) and spatial (b, c) correlation between UPRCM and GCM variables given as input to Emulator ($\hat{F}$) over target domain ($\mathcal{E})$) and test period (2090-2100). (a) Temporal correlation between UPRCM and GCM time-series for each point $p$ in target domain $\mathcal{E}$. Legend: mean ($\mu$) and standard deviation ($\operatorname{std}$) over $\mathcal{E}$. (b) Spatial correlation between UPRCM and GCM variables over $\mathcal{E}$ for each time step. (c) Example of time steps with lowest (left) and highest (right) spatial correlation ($\operatorname{sc}$) between UPRCM and GCM. Variables from top to bottom: long-wave downward radiation (LWD), short-wave downward radiation (SWD) and precipitation (PR).} 
+        \label{fig:corr-GCM-RCM}
+    \end{figure}
 
 
 %%%%%%%%%%%%%%%%%%%%
-\chapter{Results}
-%%%%%%%%%%%%%%%%%%%%
+
+
 
 \section{Comparison between $\hat{F}$ on UPRCM and GCM}
 
@@ -449,37 +513,7 @@ measure to match that in the target~\cite{wasserstein1}. It measures the distanc
 
 \subsection{Feature importance}
 
-\subsection{Correlation}
-\begin{figure}[tbp]
-        \centering
-        \begin{subfigure}[b]{\columnwidth}
-            \centering \includegraphics[width=\textwidth]{doc/Thesis-latex/images/results/temporalCorr_RCM_GCM.png}
-            \caption[]%
-            {{\small Temporal correlation over test period}}    
-          \label{fig:temp-corr-GCM-UPRCM}
-        \end{subfigure}
-        \hfill
-            \begin{subfigure}[b]{\columnwidth}
-            \centering \includegraphics[width=\textwidth]{doc/Thesis-latex/images/results/spatialCorr_TS_RCM_GCM.png}
-            \caption[]%
-            {{\small Spatial correlation over test period}}    
-          \label{fig:spatial-corr-GCM-UPRCM}
-        \end{subfigure}
-        \hfill
-        \begin{subfigure}[b]{\columnwidth}  
-            \centering 
-            \includegraphics[width=\textwidth]{doc/Thesis-latex/images/results/spatialCorr_RCM_GCM.png}
-            \caption[]%
-            {{\small Spatial correlation for individual variables and months}}  \label{fig:spatial-corr-GCM-RCM-ex}
-        \end{subfigure}
-        \hfill
-        \caption[]
-        {\small Temporal (a) and spatial (b, c) correlation between UPRCM and GCM variables given as input to Emulator ($\hat{F}$) over target domain ($\mathcal{E})$) and test period (2090-2100). (a) Temporal correlation between UPRCM and GCM time-series for each point $p$ in target domain $\mathcal{E}$. Legend: mean ($\mu$) and standard deviation ($\operatorname{std}$) over $\mathcal{E}$. (b) Spatial correlation between UPRCM and GCM variables over $\mathcal{E}$ for each time step. (c) Example of time steps with lowest (left) and highest (right) spatial correlation ($\operatorname{sc}$) between UPRCM and GCM. Variables from top to bottom: long-wave downward radiation (LWD), short-wave downward radiation (SWD) and precipitation (PR).} 
-        \label{fig:corr-GCM-RCM}
-    \end{figure}
 
-
-%%%%%%%%%%%%%%%%%%%%
 \chapter{Discussion}
 %%%%%%%%%%%%%%%%%%%%
 
@@ -519,7 +553,7 @@ advances the status quo.
   \centering
   \includegraphics[width=\columnwidth]{images/data-flow.png}
   \caption []{\small Training data flow}
-  \vspace{-3mm}
+  \vspace{-3\si{mmWe/day}\sci{km}}
   \label{fig:training-data-flow}
 \end{figure}
 \section{Pre-processing of RCM}
