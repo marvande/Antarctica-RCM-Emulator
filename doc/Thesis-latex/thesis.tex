@@ -336,15 +336,16 @@ where $\bar{Z}_{\mathrm{ref},z}$ and $\sigma(Z_{\mathrm{ref},z})$ are respective
 \end{figure}
 
 \begin{itemize}
-    \item Train and test set: we separate the time-frame $T$ into an approximate 90\%-10\% split with a train and test period of $T_{train} = 1980-2090$ and $T_{test} = 2090-2100$. We arbitrarily chose to put the test period at the end of the climate model's time-frame out of simplicity, but we could also have taken the test samples elsewhere as long as they are consecutive.    
-    \item Evaluation of $\hat{F}_U$: Emulator $\hat{F}_U$ is first evaluated in the perfect model with UPRCM features and in a second step, on GCM inputs. 
-    \item Evaluation of $\hat{F}_G$: Because we trained this Emulator on the GCM, we evaluated $\hat{F}_G$ directly on test features from the GCM. 
-    \item We illustrate the two evaluation frameworks in Fig.~\ref{fig:evaluation-framework}.
-    
+    \item Train and test set: we separated the time-frame $T$ into an approximate 90\%-10\% split with a train and test period of $T_{train} = 1980-2090$ and $T_{test} = 2090-2100$. We arbitrarily chose to put the test period at the end of the climate model's time-frame out of simplicity, but we could also have taken the test samples elsewhere as long as they are consecutive. 
+    \item Evaluation of $\hat{F}_U$: Emulator $\hat{F}_U$ was first evaluated in the perfect model with UPRCM features $\hat{F}_U(\operatorname{UPRCM})$ and in a second step, on GCM inputs $\hat{F}_U(\operatorname{GCM})$. This is to assess how the Emulator trained on UPRCM can apply what it learned to GCM features. Furthermore, the performance of $\hat{F}_U(\operatorname{GCM})$ is also a good indicator of the presence of inconsistencies between UPRCM and GCM features. 
+    \item Evaluation of $\hat{F}_G$: Because we trained this Emulator on the GCM, we evaluated $\hat{F}_G$ directly on test features from the GCM $\hat{F}_G(\operatorname{GCM})$. 
+    \item The two evaluation frameworks are illustrated in Fig.~\ref{fig:evaluation-framework}.
+    \item For each Emulator $\hat{F}_{(\cdot)}$, we assessed single month and average predictions made over the target domain. This way, we could examine which regions of the Peninsula were best reconstructed in their SMB patterns in terms of details, precision and intensity. \item Furthermore, we looked at individual time-series of predicted SMB values for single points in the target region. These points were specifically chosen to evaluate how the models handled different patterns and intensities of SMB.   
 \end{itemize}
 
-\subsection{Evaluation metrics}\label{subsec:evaluation-metrics}
-For each Emulator $\hat{F}_{(\cdot)}$ and point $p \in \mathcal{E}$, we compared the target SMB time series $Y_{p}$ to the predicted values $\widehat{Y_{p}}$ over the time period $T_{test}$. For this, we used different statistics:
+\subsection{Evaluation metrics}\label{subsec:evaluation-metrics} 
+
+To evaluate the global performance of our Machine Learning model, we used different traditional statistics. For each Emulator $\hat{F}_{(\cdot)}$and point $p \in \mathcal{E}$, we compared the target SMB time series $Y_{p}$ to the predicted values $\widehat{Y_{p}}$ over the time period $T_{test}$. For this, we used the Pearson correlation, RMSE and the Wasserstein distance. Correlation allows to whether a temporal pattern such as seasonality for example is well reconstructed, while RMSE and the Wasserstein distance evaluate the fitting of extreme values, as a good representation of the monthly variability and temporal correlation includes a good representation of the extreme values. 
 
 \subsubsection{RMSE}\label{subsubsec:rmse}
 Root Mean Squared Error (RMSE) measures the square root of the average squared differences between predicted and target observations. It is also defined as the square of the mean squared error (MSE):
@@ -368,8 +369,26 @@ measure to match that in the target~\cite{wasserstein1}.
 \end{equation}
 where $\hat{y}_{p}^{t}$ is the predicted SMB value and $y^{t}_{p}$ the true SMB value at location $p\in \mathcal{E} $ and time step $t\in T$. 
 
-\subsection{Feature importance}
-
+ \subsection{Feature importance}
+\begin{itemize}
+    \item For each Emulator $\hat{F}_{(\cdot)}$, we were interested in exploring which atmospheric variables had the biggest impact on the performance of the models.
+    \item Neural Networks have a reputation of being a black box algorithm with a decision process that is hard to understand. Nevertheless, there are ways to evaluate the importance of features, such as permutation importance. 
+    \item Permutation importance is calculated after a model has been fitted. For each single variable in the data, its content are shuffled i.e, rendering the images unreadable and then the model's performance is evaluated with that corrupted variable.
+    \item For every variable $x\in C_1$ in the test dataset $X[1:T_{test}, 1:I,1:J,1:C_1]$, we computed the difference between the prediction score on the original data and that of corrupted features. This procedure was repeated $K$ times and the importance was calculated as the mean percentage of difference in scores. 
+    \begin{equation}
+        \operatorname{I_x} =\frac{1}{K}\sum_{k\in K} \frac{100*(\operatorname{s}_{x}^k - \operatorname{s})}{\operatorname{s}} \;\;\; \forall x\in C_1    \end{equation}
+    where $s$ is the NRMSE loss on the original prediction of $\hat{F}_{(\cdot)}$ and $s_x^k$ is the loss for repetition $k\in K$ and corrupted feature $x\in C_1$. 
+    \item What is expected: 
+    \begin{itemize}
+    \item With this technique, we expected to obtain less precise predictions for corrupted features because the resulting data no longer conforms to anything observed by the Emulators~\cite{FeatureImportance2}.
+    \item Why? This method breaks the relationship between the features and the target. Because we corrupted the natural structure of the data with our scrambling, we compromised what our model learned during training, resulting in higher errors. Hence the drop in the model score is an indication of how much the model depends on the feature.~\cite{FeatureImportance}
+    \end{itemize}
+    \item Note that: 
+    \begin{itemize}
+        \item Permutation importance is not a reflection of the actual predictive value of a feature per se but rather the significance of that feature to a specific model.~\cite{FeatureImportance2}
+        \item If two features are correlated and one of them is permuted, the model still has access to this feature via the correlated one. This leads to lower importance for both features, although they might actually be important.~\cite{FeatureImportance2}. 
+    \end{itemize}
+\end{itemize}
 
 \chapter{Results}
 %%%%%%%%%%%%%%%%%%%%
@@ -381,18 +400,31 @@ where $\hat{y}_{p}^{t}$ is the predicted SMB value and $y^{t}_{p}$ the true SMB 
         \item Global ML metrics: move on to evaluate models with metrics over whole target domain. Why? Start global and use typical ML metrics to evaluate performance of models.  
         \item Geoplots: Look at actual prediction images made by Emulators. Why? Good visual aid to assess which regions are best emulated. Can look at details and precision of reconstruction.   
         \item Zoom in on specific points with their time-series and annual SMB values. Why? Look at how the models adapt to different patterns and intensities of SMB. 
-        \item Feature importance for both Emulators. Why? From a physical point of view, interesting to see which atmospheric variables play the biggest role in predicting SMB. 
+        \item Feature importance for both Emulators. Why? From a physical point of view, interesting to see which atmospheric variables play the biggest impact on SMB when its content are scrambled. 
         
     \end{itemize} 
 \end{itemize}
 
 
 \section{Bias between RCM and GCM variables}
-To assess the bias and inconsistencies between the large-scale and fine-scale atmospheric variables, we calculated the temporal and spatial correlation between UPRCM and GCM variables (Eq.~\ref{eq:spatial-corr} and Eq.\ref{eq:temporal-corr}). 
+To assess the bias and inconsistencies between the large-scale and fine-scale atmospheric variables, we calculated the temporal and spatial correlation between UPRCM and GCM features (Eq.~\ref{eq:spatial-corr} and Eq.\ref{eq:temporal-corr}). Results can be seen in Fig.~\ref{fig:corr-GCM-RCM}. 
 \begin{itemize}
-    \item Fig.~\ref{fig:temp-corr-GCM-UPRCM}: except for the two wind variables (NW, EW), the temporal correlation between URPCM and GCM features is high. Suggests that, except for winds, there is little inconsistencies in the seasonal patterns between regional and global variables.For the two winds, temporal patterns show inconsistencies over the mainland and Peninsula. We suspect that, due to difference in high and low pressure systems, the regional and global scale wind variables show different temporal patterns. 
-    \item Fig.~\ref{fig:spatial-corr-GCM-UPRCM} and Fig.~\ref{fig:spatial-corr-GCM-RCM-ex}: variables like radiation, humidity, temperature and precipitation show significant changes in spatial correlation between UPRCM and GCM. Most flagrant variable is SWD with a highly oscillating annual pattern. Looking at individual months in Fig.~\ref{fig:spatial-corr-GCM-RCM-ex}, we see that sc is low for SWD because GCM predicts higher values of radiation inland than RCM. For precipitation, see that in the worst case, patterns in UPRCM and GCM are completely different (left). While in best case, RCM is a lot more precise in predicting precipitation patterns and overall correlation very low for this variable. Notice also boundaries of RCM model show strange streaks in patterns, but know problem for climate models.  
-    \item Overall, see that problems in consistency between large scale and local scale variables. Might confuse models and might justify the use of perfect model framework to train. 
+    \item Fig.~\ref{fig:temp-corr-GCM-UPRCM}: 
+    \begin{itemize}
+        \item For most of the atmospheric variables, the time-series of URPCM and GCM features are highly positively correlated, with values very close to $1$. 
+        \item However, the two wind variables (EW, NW) show inconsistencies between large and local scale time-series over the mainland and Peninsula with minimal correlation values reaching $0.2$.
+        \item This suggests that, except for winds, there is almost no inconsistency in the seasonal patterns between regional and global variables. 
+        \item Regarding the wind variables, we suspect that due to differences in high and low-pressure systems, the wind variables show different temporal patterns.
+    \end{itemize}
+    \item Fig.~\ref{fig:spatial-corr-GCM-UPRCM} and Fig.~\ref{fig:spatial-corr-GCM-RCM-ex}: 
+    \begin{itemize}
+        \item As seen in Fig.~\ref{fig:spatial-corr-GCM-UPRCM}, variables like temperature, specific humidity, radiation, and precipitation show significant changes in spatial correlation between UPRCM and GCM features.
+        \item The most flagrant variables are SWD, with an annual pattern strongly oscillating between approximate spatial correlation values of $0.2$ and $0.8$, and precipitation with a very poor correlation.
+        \item Looking at some individual examples in in Fig.~\ref{fig:spatial-corr-GCM-RCM-ex}, we see that the spatial correlation is low for SWD radiation during winter because the GCM predicts higher radiation values in the mainland than RCM. In summer, because there is very little radiation, spatial correlation is high. 
+        \item For precipitation, the patterns in the UPRCM and GCM are very different, with the RCM being much more precise in its predictions. For example, for November, the UPRCM shows a local high-intensity precipitation region on the tip of the Peninsula, while the GCM predicts a more imprecise pattern of lower intensity. 
+        \item We also notice a streak pattern on the left boundary of the RCM, but this is a known problem as the boundaries of climate models are usually imprecise. 
+    \end{itemize}
+    \item Overall, we found problems in consistency between large and local-scale variables. As mentioned in~\ref{subsec:perfect-model}, these biases might confuse an Emulator, and this might justify the usage of the perfect model framework for training a model. 
 \end{itemize}
 
 
@@ -428,6 +460,27 @@ To assess the bias and inconsistencies between the large-scale and fine-scale at
 %%%%%%%%%%%%%%%%%%%%
 
 
+\section{Evaluation metrics}
+To evaluate the overall performance of both Emulators, we used three traditional machine learning metrics as described in~\ref{subsec:evaluation-metrics}. Results can be seen in Fig.~\ref{fig:evaluation-GCM-RCM}.
+\begin{itemize}
+    \item Correlation: In average, all models come close in their correlation as can be seen in the boxplot. We can see that for $\hat{F}_{U}(UPRCM)$ and $\hat{F}_{G}(GCM)$, the tip of the Peninsula and west-coast show the highest correlation to the truth, with values close to 1. The east coast of the peninsula has the lowest correlations, especially for $\hat{F}_{G}(GCM)$. We suspect this is because the model struggles to emulate SMB patterns of dry regions such as the inland and east peninsula. 
+    \item Wasserstein distance: The wasserstein distance on $\hat{F}_{U}(GCM)$ indicates that the density probability functions of the emulated SMB series are farther from the RCM truth when given GCM inputs than UPRCM. In that setting, the Peninsula especially shows high differences in distributions with outliers with large scores up to $10$.  
+    \item RMSE: weaker RMSE for $\hat{F}_{U}(GCM)$ with strong outliers on the tip of the peninsula, hinting that Emulator struggles to reach high intensities of SMB when given GCM inputs while trained on UPRCM. 
+\end{itemize}
+
+
+
+% evaluation metrics
+\begin{figure}[!ht]
+  \centering
+  \includegraphics[width=\columnwidth]{doc/Thesis-latex/images/results/metrics_RCM_GCM.png}
+  \caption []{\small Evaluation of Emulator trained on UPRCM ($\hat{F}$) or on GCM ($\hat{G}$) and using respectively UPRCM ($\operatorname{\hat{F}(UPRCM)}$) and GCM as low-resolution input ($\operatorname{\hat{F}(GCM)}$, $\operatorname{\hat{G}(GCM)}$). Test period (2090-2100). At each position $p$ in target domain $\mathcal{E}$, the truth series over the test period are compared to predicted SMB values $\operatorname{\hat{F}(\cdot)}$ and $\operatorname{\hat{G}(\cdot)}$. Right: box plot of evaluation metric values, extending from lower to upper quartile, with a line at the median and triangle at the mean. From top to bottom: Pearson correlation, Wasserstein distance and RMSE (\ref{subsubsec:rmse}). Legend: spatial mean ($\operatorname{\mu}$) and standard deviation ($\operatorname{std}$) of metric over $\mathcal{E}$. }
+  \vspace{-3mm}
+  \label{fig:evaluation-GCM-RCM}
+\end{figure}
+
+
+
 
 \section{Comparison between $\hat{F}$ on UPRCM and GCM}
 
@@ -437,15 +490,6 @@ To assess the bias and inconsistencies between the large-scale and fine-scale at
     \item Close in Pearson correlation but higher difference in Wasserstein and RMSE where F(UPRCM) is closer to truth. Indicates Emulator on GCM gets idea of time series but misses amplitude.
     \item Ref Fig.~\ref{fig:evaluation-GCM-RCM}
 \end{itemize}
-
-% evaluation metrics
-\begin{figure}[thb]
-  \centering
-  \includegraphics[width=\columnwidth]{doc/Thesis-latex/images/results/metrics_RCM_GCM.png}
-  \caption []{\small Evaluation of Emulator trained on UPRCM ($\hat{F}$) or on GCM ($\hat{G}$) and using respectively UPRCM ($\operatorname{\hat{F}(UPRCM)}$) and GCM as low-resolution input ($\operatorname{\hat{F}(GCM)}$, $\operatorname{\hat{G}(GCM)}$). Test period (2090-2100). At each position $p$ in target domain $\mathcal{E}$, the truth series over the test period are compared to predicted SMB values $\operatorname{\hat{F}(\cdot)}$ and $\operatorname{\hat{G}(\cdot)}$. Right: box plot of evaluation metric values, extending from lower to upper quartile, with a line at the median and triangle at the mean. From top to bottom: Pearson correlation, Wasserstein distance and RMSE (\ref{subsubsec:rmse}). Legend: spatial mean ($\operatorname{\mu}$) and standard deviation ($\operatorname{std}$) of metric over $\mathcal{E}$. }
-  \vspace{-3mm}
-  \label{fig:evaluation-GCM-RCM}
-\end{figure}
 
 
 \subsection{Geoplots}
