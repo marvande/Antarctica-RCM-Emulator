@@ -37,6 +37,7 @@ def getMetricsPixels(df, labels):
     metrics["rmseGCMtr"] = mean_squared_error(y_true = df[labels[3]], y_pred = df[labels[2]], squared = False)
     metrics["nrmse"] = metrics["rmse"]/(df[labels[3]].max()- df[labels[3]].min())
     metrics["nrmseGCM"] = metrics["rmseGCM"]/(df[labels[3]].max()- df[labels[3]].min())
+    metrics["nrmseGCMtr"] = metrics["rmseGCMtr"]/(df[labels[3]].max()- df[labels[3]].min())
     return metrics
 
 def increment(i, evencol, evenrow):
@@ -86,9 +87,9 @@ def plotTimeseries3Models(preds1, preds2, preds3, true_smb, train_set, target_da
                         ax.legend(loc = 'upper right', ncol = 2, fontsize = 16)
                 # legend text: 
                 textstrUPRCM = '\n'.join((
-                        r'$\mathrm{RMSE}_{U}=%.2f, r_{U}=%.2f$' % (metricsPixels["rmse"], metricsPixels["pearson"], ),
-                        r'$\mathrm{RMSE}_{G}=%.2f, r_{G}=%.2f$' % (metricsPixels["rmseGCM"], metricsPixels["pearsonGCM"], ),
-                        r'$\mathrm{RMSE}_{Gtr}=%.2f, r_{Gtr}=%.2f$' % (metricsPixels["rmseGCMtr"], metricsPixels["pearsonGCMtr"], )))
+                        r'$\mathrm{RMSE}_{U}=%.2f, \mathrm{NRMSE}_{U}=%.2f, r_{U}=%.2f$' % (metricsPixels["rmse"], metricsPixels["nrmse"], metricsPixels["pearson"], ),
+                        r'$\mathrm{RMSE}_{G}=%.2f, \mathrm{NRMSE}_{G}=%.2f, r_{G}=%.2f$' % (metricsPixels["rmseGCM"], metricsPixels["nrmseGCM"], metricsPixels["pearsonGCM"], ),
+                        r'$\mathrm{RMSE}_{Gtr}=%.2f, \mathrm{NRMSE}_{Gtr}=%.2f, r_{Gtr}=%.2f$' % (metricsPixels["rmseGCMtr"], metricsPixels["nrmseGCMtr"], metricsPixels["pearsonGCMtr"], )))
             
                 if i == 1:
                         ax.set_ylim(top = 15)
@@ -104,7 +105,7 @@ def plotTimeseries3Models(preds1, preds2, preds3, true_smb, train_set, target_da
                                 verticalalignment='top')
                 if i == 4:
                         ax.set_ylim(top = 3)
-                        ax.text(0.02, 0.95, textstrUPRCM, transform=ax.transAxes, fontsize=16,
+                        ax.text(0.02, 0.95, textstrUPRCM, transform=ax.transAxes, fontsize=15,
                                 verticalalignment='top')
                 ax.grid(axis = 'y')   
                 ax.tick_params(axis='both', which='major', labelsize=16)
@@ -145,8 +146,8 @@ def plotTimeseries3Models(preds1, preds2, preds3, true_smb, train_set, target_da
                 # ------------------ Boxplot SMB
                 grid = grids['bx']
                 ax = plt.subplot(gs[grid[i-1][0], grid[i-1][1]])
-                order = ['RCM Truth', '$\mathrm{\operatorname{\hat{F}(UPRCM)}}$', '$\mathrm{\operatorname{\hat{F}(GCM)}}$', 
-                    '$\mathrm{\operatorname{\hat{G}(GCM)}}$']
+                order = ['RCM Truth', '$\mathrm{\operatorname{\hat{F}_{U}(UPRCM)}}$', '$\mathrm{\operatorname{\hat{F}_{U}(GCM)}}$', 
+                    '$\mathrm{\operatorname{\hat{F}_{G}(GCM)}}$']
                 im = sns.boxplot(data = yearlySMB, palette = colors, 
                                                     boxprops=dict(alpha=.8), order = order, showmeans=True, 
                                                     meanprops={
@@ -181,8 +182,9 @@ def getMinMax2Metrics(metric):
     return vmin, vmax
 
 
-def addMeanLegend(ax, mean,std, fontsize = 18):
-    textstrBoxplots = "\n".join((r"$\mathrm{\mu}=%.2f, \mathrm{std}=%.2f$" % (mean, std),))
+def addMeanLegend(ax, mean,std, min, max, fontsize = 16):
+    textstrBoxplots = "\n".join((r"$\mathrm{\mu}=%.2f, \mathrm{std}=%.2f$" % (mean, std),
+                                r"$\mathrm{\mathrm{min}}=%.2f, \mathrm{max}=%.2f$" % (min, max),))  
     ax.text(
         0.02,
         0.95,
@@ -230,7 +232,7 @@ def CompareMetrics3Models(
         cmap=cmap,
         colorbar=False,
     )
-    addMeanLegend(ax1, np.nanmean(PearsonCorr[0]), np.nanstd(PearsonCorr[0]))
+    addMeanLegend(ax1, np.nanmean(PearsonCorr[0]), np.nanstd(PearsonCorr[0]), np.nanmin(PearsonCorr[0]), np.nanmax(PearsonCorr[0]))
     i += 1
     
     ax2 = plt.subplot(M, 4, i, projection=ccrs.SouthPolarStereo())
@@ -243,7 +245,7 @@ def CompareMetrics3Models(
         cmap=cmap,
         colorbar=False,
     )
-    addMeanLegend(ax2, np.nanmean(PearsonCorr[1]), np.nanstd(PearsonCorr[1]))
+    addMeanLegend(ax2, np.nanmean(PearsonCorr[1]), np.nanstd(PearsonCorr[1]), np.nanmin(PearsonCorr[1]), np.nanmax(PearsonCorr[1]))
     
     i += 1
     ax3 = plt.subplot(M, 4, i, projection=ccrs.SouthPolarStereo())
@@ -256,7 +258,7 @@ def CompareMetrics3Models(
         cmap=cmap,
         colorbar=False,
     )
-    addMeanLegend(ax3, np.nanmean(PearsonCorr[2]), np.nanstd(PearsonCorr[2]))
+    addMeanLegend(ax3, np.nanmean(PearsonCorr[2]), np.nanstd(PearsonCorr[2]), np.nanmin(PearsonCorr[2]), np.nanmax(PearsonCorr[2]))
     
     for j, ax in enumerate([ax1, ax2, ax3]):
         ax.set_title("{}: Correlation".format(labels[j]), fontsize=20)
@@ -297,7 +299,7 @@ def CompareMetrics3Models(
         cmap=cmap,
         colorbar=False,
     )
-    addMeanLegend(ax5, np.nanmean(Wasserstein[0]), np.nanstd(Wasserstein[0]))
+    addMeanLegend(ax5, np.nanmean(Wasserstein[0]), np.nanstd(Wasserstein[0]), np.nanmin(Wasserstein[0]), np.nanmax(Wasserstein[0]))
     i += 1
     ax6 = plt.subplot(M, 4, i, projection=ccrs.SouthPolarStereo())
     plotWasserstein(
@@ -311,7 +313,8 @@ def CompareMetrics3Models(
         cmap=cmap,
         colorbar=False,
     )
-    addMeanLegend(ax6, np.nanmean(Wasserstein[1]), np.nanstd(Wasserstein[1]))
+    addMeanLegend(ax6, np.nanmean(Wasserstein[1]), np.nanstd(Wasserstein[1]), np.nanmin(Wasserstein[1]), np.nanmax(Wasserstein[1]))
+    
     
     i += 1
     ax7 = plt.subplot(M, 4, i, projection=ccrs.SouthPolarStereo())
@@ -326,7 +329,8 @@ def CompareMetrics3Models(
         cmap=cmap,
         colorbar=False,
     )
-    addMeanLegend(ax7, np.nanmean(Wasserstein[2]), np.nanstd(Wasserstein[2]))
+    addMeanLegend(ax7, np.nanmean(Wasserstein[2]), np.nanstd(Wasserstein[2]), np.nanmin(Wasserstein[2]), np.nanmax(Wasserstein[2]))
+    
     
     for j, ax in enumerate([ax5, ax6, ax7]):
         ax.set_title("{}: Wasserstein".format(labels[j]), fontsize=20)
@@ -370,7 +374,8 @@ def CompareMetrics3Models(
         cmap=cmap,
         colorbar=False,
     )
-    addMeanLegend(ax9, np.nanmean(RMSE[0]), np.nanstd(RMSE[0]))
+    addMeanLegend(ax9, np.nanmean(RMSE[0]), np.nanstd(RMSE[0]), np.nanmin(RMSE[0]), np.nanmax(RMSE[0]))
+    
     i += 1
     ax10 = plt.subplot(M, 4, i, projection=ccrs.SouthPolarStereo())
     plotNRMSE(
@@ -384,7 +389,7 @@ def CompareMetrics3Models(
         cmap=cmap,
         colorbar=False,
     )
-    addMeanLegend(ax10, np.nanmean(RMSE[1]), np.nanstd(RMSE[1]))
+    addMeanLegend(ax10, np.nanmean(RMSE[1]), np.nanstd(RMSE[1]), np.nanmin(RMSE[1]), np.nanmax(RMSE[1]))
     i += 1
     ax11 = plt.subplot(M, 4, i, projection=ccrs.SouthPolarStereo())
     im = plotNRMSE(
@@ -398,7 +403,7 @@ def CompareMetrics3Models(
         cmap=cmap,
         colorbar=False,
     )
-    addMeanLegend(ax11, np.nanmean(RMSE[2]), np.nanstd(RMSE[2]))
+    addMeanLegend(ax11, np.nanmean(RMSE[2]), np.nanstd(RMSE[2]), np.nanmin(RMSE[2]), np.nanmax(RMSE[2]))
     
     for j, ax in enumerate([ax9, ax10, ax11]):
         ax.set_title("{}: RMSE".format(labels[j]), fontsize=20)
@@ -471,6 +476,10 @@ def plotPredictions3Models(
         np.expand_dims(dsGCM.SMB.isel(time=1).values, 2),
     )
     
+    # apply mask over ice/land:
+    masktarget = np.expand_dims(createMask(sampletarget_, onechannel=True), 2)
+    maskGCM = np.expand_dims(createMask(sampleGCM_, onechannel=True), 2)
+    
     # mean values:
     meanGCM = np.expand_dims(dsGCM.SMB.mean(dim="time").values, 2)
     meanTarget = np.array(true_smb).mean(axis=0)
@@ -480,16 +489,13 @@ def plotPredictions3Models(
     
     # metrics for plots:
     scUPRCM, scGCM,  scGCM_tr, rmseUPRCM, rmseGCM, rmseGCM_tr = metrics_geoplot(
-        sampletarget_, samplepred_, samplepredGCM_, samplepredGCM_tr, nrmse=False
+        masktarget, sampletarget_, samplepred_, samplepredGCM_, samplepredGCM_tr, nrmse=False
     )
+    
     meanscUPRCM, meanscGCM, meanscGCM_tr, meanrmseUPRCM, meanrmseGCM, meanrmseGCM_tr = metrics_geoplot(
-        meanTarget, meanPred, meanPredGCM, meanPredGCM_tr, nrmse=False
+        masktarget, meanTarget, meanPred, meanPredGCM, meanPredGCM_tr, nrmse=False
     )
-    
-    # apply mask over ice/land:
-    masktarget = np.expand_dims(createMask(sampletarget_, onechannel=True), 2)
-    maskGCM = np.expand_dims(createMask(sampleGCM_, onechannel=True), 2)
-    
+
     sampletarget_ = applyMask(sampletarget_, masktarget)
     samplepred_ = applyMask(samplepred_, masktarget)
     samplepredGCM_ = applyMask(samplepredGCM_, masktarget)
@@ -501,6 +507,7 @@ def plotPredictions3Models(
     meanPredGCM = applyMask(meanPredGCM, masktarget)
     meanPredGCM_tr = applyMask(meanPredGCM_tr, masktarget)
     meanGCM = applyMask(meanGCM, maskGCM)
+    
     
     # create xarray for mean GCM smb:
     coords = {"y": dsGCM.coords["y"], "x": dsGCM.coords["x"]}
@@ -559,11 +566,11 @@ def plotPredictions3Models(
     im2 = plotPred(
         target_dataset, samplepred_, ax3, vmin, vmax, region="Larsen", cmap=cmap
     )
-    ax3.set_title("{}: {}".format(time, '$\mathrm{\operatorname{\hat{F}(UPRCM)}}$'), fontsize = fontsize_axes)
+    ax3.set_title("{}: {}".format(time, '$\mathrm{\operatorname{\hat{F}_{U}(UPRCM)}}$'), fontsize = fontsize_axes)
     textstrBoxplots = "\n".join(
         (
-            r"$\mathrm{\mu}=%.1f, \mathrm{sc}=%.2f, \mathrm{rmse}=%.2f$"
-            % (np.nanmean(samplepred_), scUPRCM, rmseUPRCM),
+            r"$\mathrm{\mu}=%.1f, \mathrm{rmse}=%.2f$"
+            % (np.nanmean(samplepred_), rmseUPRCM),
         )
     )
     ax3.text(
@@ -571,7 +578,7 @@ def plotPredictions3Models(
         0.95,
         textstrBoxplots,
         transform=ax3.transAxes,
-        fontsize=14,
+        fontsize=16,
         verticalalignment="top",
     )
     
@@ -580,11 +587,11 @@ def plotPredictions3Models(
     im2 = plotPred(
         target_dataset, samplepredGCM_, ax4, vmin, vmax, region="Larsen", cmap=cmap
     )
-    ax4.set_title("{}: {}".format(time, '$\mathrm{\operatorname{\hat{F}(GCM)}}$'), fontsize = fontsize_axes)
+    ax4.set_title("{}: {}".format(time, '$\mathrm{\operatorname{\hat{F}_{U}(GCM)}}$'), fontsize = fontsize_axes)
     textstrBoxplots = "\n".join(
         (
-            r"$\mathrm{\mu}=%.1f, \mathrm{sc}=%.2f, \mathrm{rmse}=%.2f$"
-            % (np.nanmean(samplepredGCM_), scGCM, rmseGCM),
+            r"$\mathrm{\mu}=%.1f,\mathrm{rmse}=%.2f$"
+            % (np.nanmean(samplepredGCM_), rmseGCM),
         )
     )
     ax4.text(
@@ -592,7 +599,7 @@ def plotPredictions3Models(
         0.95,
         textstrBoxplots,
         transform=ax4.transAxes,
-        fontsize=14,
+        fontsize=16,
         verticalalignment="top",
     )
     
@@ -601,11 +608,11 @@ def plotPredictions3Models(
     im2 = plotPred(
         target_dataset, samplepredGCM_tr, ax5, vmin, vmax, region="Larsen", cmap=cmap
     )
-    ax5.set_title("{}: {}".format(time, '$\mathrm{\operatorname{\hat{G}(GCM)}}$'), fontsize = fontsize_axes)
+    ax5.set_title("{}: {}".format(time, '$\mathrm{\operatorname{\hat{F}_{G}(GCM)}}$'), fontsize = fontsize_axes)
     textstrBoxplots = "\n".join(
         (
-            r"$\mathrm{\mu}=%.1f, \mathrm{sc}=%.2f, \mathrm{rmse}=%.2f$"
-            % (np.nanmean(samplepredGCM_tr), scGCM_tr, rmseGCM_tr),
+            r"$\mathrm{\mu}=%.1f, \mathrm{rmse}=%.2f$"
+            % (np.nanmean(samplepredGCM_tr), rmseGCM_tr),
         )
     )
     ax5.text(
@@ -613,7 +620,7 @@ def plotPredictions3Models(
         0.95,
         textstrBoxplots,
         transform=ax5.transAxes,
-        fontsize=14,
+        fontsize=16,
         verticalalignment="top",
     )
     
@@ -667,18 +674,18 @@ def plotPredictions3Models(
         0.95,
         textstrBoxplots,
         transform=ax7.transAxes,
-        fontsize=15,
+        fontsize=16,
         verticalalignment="top",
     )
     
     #----------------- Mean Em(UPRCM) - UPRCM
     ax8 = plt.subplot(2, 5, 8, projection=ccrs.SouthPolarStereo())
     plotTarget(target_dataset, meanPred, ax8, vmin, vmax, region="Larsen", cmap=cmap)
-    ax8.set_title("Mean: {}".format('$\mathrm{\operatorname{\hat{F}(UPRCM)}}$'), fontsize = fontsize_axes)
+    ax8.set_title("Mean: {}".format('$\mathrm{\operatorname{\hat{F}_{U}(UPRCM)}}$'), fontsize = fontsize_axes)
     textstrBoxplots = "\n".join(
         (
-            r"$\mathrm{\mu}=%.1f, \mathrm{sc}=%.2f, \mathrm{rmse}=%.2f$"
-            % (np.nanmean(meanPred), meanscUPRCM, meanrmseUPRCM),
+            r"$\mathrm{\mu}=%.1f, \mathrm{rmse}=%.2f$"
+            % (np.nanmean(meanPred), meanrmseUPRCM),
         )
     )
     ax8.text(
@@ -686,7 +693,7 @@ def plotPredictions3Models(
         0.95,
         textstrBoxplots,
         transform=ax8.transAxes,
-        fontsize=14,
+        fontsize=16,
         verticalalignment="top",
     )
     
@@ -695,11 +702,11 @@ def plotPredictions3Models(
     imMean = plotTarget(
         target_dataset, meanPredGCM, ax9, vmin, vmax, region="Larsen", cmap=cmap
     )
-    ax9.set_title("Mean: {}".format('$\mathrm{\operatorname{\hat{F}(GCM)}}$'), fontsize = fontsize_axes)
+    ax9.set_title("Mean: {}".format('$\mathrm{\operatorname{\hat{F}_{U}(GCM)}}$'), fontsize = fontsize_axes)
     textstrBoxplots = "\n".join(
         (
-            r"$\mathrm{\mu}=%.1f, \mathrm{sc}=%.2f, \mathrm{rmse}=%.2f$"
-            % (np.nanmean(meanPredGCM), meanscGCM, meanrmseGCM),
+            r"$\mathrm{\mu}=%.1f, \mathrm{rmse}=%.2f$"
+            % (np.nanmean(meanPredGCM), meanrmseGCM),
         )
     )
     ax9.text(
@@ -707,7 +714,7 @@ def plotPredictions3Models(
         0.95,
         textstrBoxplots,
         transform=ax9.transAxes,
-        fontsize=14,
+        fontsize=16,
         verticalalignment="top",
     )
     
@@ -716,11 +723,11 @@ def plotPredictions3Models(
     imMean = plotTarget(
         target_dataset, meanPredGCM_tr, ax10, vmin, vmax, region="Larsen", cmap=cmap
     )
-    ax10.set_title("Mean: {}".format('$\mathrm{\operatorname{\hat{G}(GCM)}}$'), fontsize = fontsize_axes)
+    ax10.set_title("Mean: {}".format('$\mathrm{\operatorname{\hat{F}_{G}(GCM)}}$'), fontsize = fontsize_axes)
     textstrBoxplots = "\n".join(
         (
-            r"$\mathrm{\mu}=%.1f, \mathrm{sc}=%.2f, \mathrm{rmse}=%.2f$"
-            % (np.nanmean(meanPredGCM_tr), meanscGCM_tr, meanrmseGCM_tr),
+            r"$\mathrm{\mu}=%.1f,  \mathrm{rmse}=%.2f$"
+            % (np.nanmean(meanPredGCM_tr), meanrmseGCM_tr),
         )
     )
     ax10.text(
@@ -728,7 +735,7 @@ def plotPredictions3Models(
         0.95,
         textstrBoxplots,
         transform=ax10.transAxes,
-        fontsize=14,
+        fontsize=16,
         verticalalignment="top",
     )
     
@@ -737,21 +744,21 @@ def plotPredictions3Models(
     
     #plt.suptitle(f"Random month: {time}", fontsize = fontsize_suptitle)
     
-def metrics_geoplot(sampletarget_, samplepred_, samplepredGCM_, samplepredGCM_tr, nrmse = False):
+def metrics_geoplot(mask, sampletarget_, samplepred_, samplepredGCM_, samplepredGCM_tr, nrmse = False):
     # correlation:
-    scUPRCM = scc(sampletarget_, samplepred_) # spatial correlation
-    scGCM = scc(sampletarget_, samplepredGCM_) # spatial correlation
-    scGCM_tr = scc(sampletarget_, samplepredGCM_tr) # spatial correlation
+    scUPRCM = scc(mask*sampletarget_, mask*samplepred_) # spatial correlation
+    scGCM = scc(mask*sampletarget_, mask*samplepredGCM_) # spatial correlation
+    scGCM_tr = scc(mask*sampletarget_, mask*samplepredGCM_tr) # spatial correlation
         
     # rmse
     rmseUPRCM = np.mean(calculateRMSE(np.expand_dims(sampletarget_, 0), np.expand_dims(samplepred_, 0), 
-                                                                            normalised = nrmse)) # rmse
+                                                                            normalised = nrmse, ignoreSea=True)) # rmse
     rmseGCM = np.mean(calculateRMSE(np.expand_dims(sampletarget_, 0), np.expand_dims(samplepredGCM_, 0), 
-                                                                        normalised = nrmse)) # rmse
+                                                                        normalised = nrmse, ignoreSea=True)) # rmse
     rmseGCM_tr = np.mean(calculateRMSE(np.expand_dims(sampletarget_, 0), np.expand_dims(samplepredGCM_tr, 0), 
-                                                                        normalised = nrmse)) # rmse
+                                                                        normalised = nrmse, ignoreSea=True)) # rmse
         
-    return scUPRCM, scGCM,  scGCM_tr, rmseUPRCM, rmseGCM, rmseGCM_tr    
+    return scUPRCM, scGCM,  scGCM_tr, rmseUPRCM, rmseGCM, rmseGCM_tr
 
 def applyMask(sample, mask):
     sample = mask*sample

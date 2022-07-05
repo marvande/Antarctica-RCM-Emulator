@@ -270,7 +270,7 @@ def regionEncoder(X, region = REGION, regions=REGIONS):
 	return R
 
 
-"""standardize: standardises data array by substracting mean and dividing by std
+"""standardize: standardizes data array by substracting mean and dividing by std
 """
 def standardize(data, mean = None, std = None, ownstd = True):
 	import numpy as np

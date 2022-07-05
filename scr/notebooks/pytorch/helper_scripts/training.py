@@ -516,8 +516,6 @@ def trainFlow(
 
 """plotLoss: plots training and validation loss and metrics
 """
-
-
 def plotLoss(train_loss_e, val_loss_e):
     f = plt.figure(figsize=(10, 8))
     ax = plt.subplot(3, 1, 1)
