@@ -22,7 +22,8 @@ def plotAllVar(
     n: int = 3,  # number of columns in plot
     name: str = "GCM",  # name of dataset plotted, for title
     randTime: int = 0,
-    figsize = (15, 10)
+    figsize = (15, 10), 
+    withlabels = True
 ):  # time step that should be plotted
     
     dt = pd.to_datetime([GCM_xy.time.isel(time=randTime).values])
@@ -36,12 +37,18 @@ def plotAllVar(
         var = vars_[i]
         ax = plt.subplot(m, n, i + 1, projection=ccrs.SouthPolarStereo())
         GCM_xy[var].isel(time=randTime).plot(
-            ax=ax, x="x", y="y", transform=ccrs.SouthPolarStereo(), add_colorbar=True
+            ax=ax, x="x", y="y", transform=ccrs.SouthPolarStereo(), add_colorbar=withlabels
         )
         ax.coastlines("10m", color="black", linewidth = 1)
-        ax.gridlines(color = 'grey')
-        ax.set_title(f"{GCM_xy[var].long_name} ({var})")
-    plt.suptitle(f"{time} of {name}")
+        
+        if withlabels:
+            ax.set_title(f"{GCM_xy[var].long_name} ({var})")
+            plt.suptitle(f"{time} of {name}")
+            ax.gridlines(color = 'grey')
+        else:
+            #ax.set_title(f"{var}")
+            ax.set_title("")
+    
     
 
 """
@@ -77,8 +84,8 @@ def plotAllVar2Xr(
         clb.set_label(f'{var} [{GCM_xy[var].attrs["units"]}]')    
         ax.coastlines("10m", color="black", linewidth = 1.5)
         ax.gridlines(color="grey")
-        #ax.set_title(f"{GCM_xy[var].long_name} GCMLike ({var})")
-        ax.set_title(f"GCMLike: {GCM_xy[var].long_name}")
+        #ax.set_title(f"{GCM_xy[var].long_name} UPRCM ({var})")
+        ax.set_title(f"UPRCM: {GCM_xy[var].long_name}")
         k+=1
         ax = plt.subplot(m, n, k, projection=ccrs.SouthPolarStereo())
         im = GCM_xy2[var].isel(time=time).plot(
@@ -154,18 +161,19 @@ def takeRandomSamples(
 plotTrain: Plot a training sample for a certain time step
 """
 def plotTrain(
-    GCMLike,  # GCM dataset
+    UPRCM,  # GCM dataset
     sample2dtrain,  # 2d training sample
     numVar,  # number of variable to plot (because 7 channels)
     ax,
     time,  # timestep of plot
     list_var,  # list of all variables in GCM
     region="Whole Antarctica", # region
+    cmap = 'RdYlBu_r'
 ):  
     if region != "Whole Antarctica":
-        ds = createLowerInput(GCMLike, region=region, Nx=48, Ny=25, print_=False)
+        ds = createLowerInput(UPRCM, region=region, Nx=48, Ny=25, print_=False)
     else:
-        ds = GCMLike
+        ds = UPRCM
         
     VAR = list_var[numVar]
     coords = {"y": ds.coords["y"], "x": ds.coords["x"]}
@@ -178,7 +186,7 @@ def plotTrain(
         x="x",
         transform=ccrs.SouthPolarStereo(),
         add_colorbar=False,
-        cmap="RdYlBu_r",
+        cmap=cmap,
     )
     
     ax.coastlines("10m", color="black", linewidth = 1)
@@ -199,7 +207,8 @@ def plotTarget(
     vmax,  # max value of prediction and target, for shared colorbar
     region="Whole Antarctica",  # region
     colorbar:bool = False,
-    fontsize = 14
+    fontsize = 14, 
+    cmap = "RdYlBu_r"
 ):
     ds = createLowerTarget(
             target_dataset, region=region, Nx=64, Ny=64, print_=False
@@ -215,12 +224,12 @@ def plotTarget(
         x="x",
         transform=ccrs.SouthPolarStereo(),
         add_colorbar=colorbar,
-        cmap="RdYlBu_r",
+        cmap=cmap,
         vmin=vmin,
         vmax=vmax,
     )
     ax.coastlines("10m", color="black", linewidth = 1)
-    ax.gridlines()
+    #ax.gridlines()
     ax.set_title(f"Target: SMB")
     
     return pl
@@ -236,6 +245,7 @@ def plotInterp(
     vmin,  # min value of prediction and target, for shared colorbar
     vmax,  # max value of prediction and target, for shared colorbar
     region="Whole Antarctica",  # region
+    cmao = 'RdYlBu_r'
 ):
     if region != "Whole Antarctica":
         ds = createLowerTarget(
@@ -254,12 +264,12 @@ def plotInterp(
         x="x",
         transform=ccrs.SouthPolarStereo(),
         add_colorbar=False,
-        cmap="RdYlBu_r",
+        cmap=cmap,
         vmin=vmin,
         vmax=vmax,
     )
     ax.coastlines("10m", color="black", linewidth = 1)
-    ax.gridlines()
+    #ax.gridlines()
     ax.set_title(f"Interpolated SMB, {region}")
     
     return pl
@@ -276,6 +286,7 @@ def plotPred(
     vmax,  # max value of prediction and target, for shared colorbar
     region="Whole Antarctica",  # region
     fontsize = 14,
+    cmap = "RdYlBu_r"
 ):
     ds = createLowerTarget(
             target_dataset, region=region, Nx=64, Ny=64, print_=False)
@@ -290,12 +301,12 @@ def plotPred(
         x="x",
         transform=ccrs.SouthPolarStereo(),
         add_colorbar=False,
-        cmap="RdYlBu_r",
+        cmap=cmap,
         vmin=vmin,
         vmax=vmax,
     )
     ax.coastlines("10m", color="black", linewidth = 1)
-    ax.gridlines()
+    #pax.gridlines()
     ax.set_title(f"Emulator: SMB")
     
     return pl
@@ -353,7 +364,7 @@ def createLowerTarget(
 """createLowerInput: creates a subset of the input domain, cut to new dimensions x and y
 """
 def createLowerInput(
-    GCMLike,
+    UPRCM,
     region: str = "Larsen",  # region of interest
     Nx: int = 48,  # new size of x dimension
     Ny: int = 25,  # new size of y dimension
@@ -363,26 +374,26 @@ def createLowerInput(
         max_x = (Nx / 2) * 68 * 1000
         max_y = (Ny) * 206 * 1000
         
-        df = GCMLike.where(GCMLike.x < max_x, drop=True)
+        df = UPRCM.where(UPRCM.x < max_x, drop=True)
         df = df.where(-max_x <= df.x, drop=True)
         
     if region == "Larsen":
-        min_x = GCMLike.x.min().values
-        df = GCMLike.where(GCMLike.x < min_x + (Nx * 68 * 1000), drop=True)
+        min_x = UPRCM.x.min().values
+        df = UPRCM.where(UPRCM.x < min_x + (Nx * 68 * 1000), drop=True)
         
     if region == "Amundsen":  # same region as Larsen
-        min_x = GCMLike.x.min().values
-        df = GCMLike.where(GCMLike.x < min_x + (Nx * 68 * 1000), drop=True)
+        min_x = UPRCM.x.min().values
+        df = UPRCM.where(UPRCM.x < min_x + (Nx * 68 * 1000), drop=True)
     
     if region == "Wilkes":  # same region as Larsen
-        max_x = GCMLike.x.max().values
-        df = GCMLike.where(GCMLike.x > max_x - (Nx * 68 * 1000), drop=True)
+        max_x = UPRCM.x.max().values
+        df = UPRCM.where(UPRCM.x > max_x - (Nx * 68 * 1000), drop=True)
     
     if region == "Maud":  # same region as lower peninsula
         max_x = (Nx / 2) * 68 * 1000
         max_y = (Ny) * 206 * 1000
     
-        df = GCMLike.where(GCMLike.x < max_x, drop=True)
+        df = UPRCM.where(UPRCM.x < max_x, drop=True)
         df = df.where(-max_x <= df.x, drop=True)
     
     if print_:

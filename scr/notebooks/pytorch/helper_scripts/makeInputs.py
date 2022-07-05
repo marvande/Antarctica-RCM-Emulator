@@ -7,7 +7,7 @@ from config import *
 from math import cos,sin,pi
 
 def input_maker(
-	GCMLike,
+	UPRCM,
 	GCM = None,
 	size_input_domain:int=16,  # size of domain, format: 8,16,32, must be defined in advance
 	stand:bool=True,  # standardization of X
@@ -22,7 +22,7 @@ def input_maker(
 	dropvarGCM = None
 ):
 	
-	DATASET = createLowerInput(GCMLike, region=region, Nx=48, Ny=25, print_=False) # GCMLike
+	DATASET = createLowerInput(UPRCM, region=region, Nx=48, Ny=25, print_=False) # UPRCM
 	if GCM != None:
 		DATASETGCM = createLowerInput(GCM, region=region, Nx=48, Ny=25, print_=False) # GCM
 
@@ -30,7 +30,7 @@ def input_maker(
 	MAKE THE 2D INPUT ARRAY
 	SHAPE [nbmonths, x, y, nb_vars]
 	"""
-	# Remove target variable from DATASET for GCMLike:
+	# Remove target variable from DATASET for UPRCM:
 	DATASET = DATASET.drop(["SMB"])
 	
 	if dropvarRCM != None: # drop additional variables if needed
@@ -73,7 +73,7 @@ def input_maker(
 			INPUT_2D_GCM = INPUT_2D_bf_GCM
 		
 	if stand:
-		# Standardize GCMLike:
+		# Standardize UPRCM:
 		INPUT_2D_SDTZ = standardize(INPUT_2D, mean = None, std = None, ownstd = True)
 		INPUT_2D_ARRAY = INPUT_2D_SDTZ
 		if GCM != None:
@@ -163,15 +163,15 @@ def input_maker(
 		
 	DATASET.close()
 	if GCM != None:
-		print('Return input of GCM')
+		#print('Return input of GCM')
 		DATASETGCM.close()
 		return INPUT_2D_ARRAY_GCM, INPUT_1D_ARRAY, VAR_LIST
 	else:
-		print('Return input of GCMLike')
+		#print('Return input of UPRCM')
 		return INPUT_2D_ARRAY, INPUT_1D_ARRAY, VAR_LIST
 
 
-def make_inputs(GCMLike, 
+def make_inputs(UPRCM, 
 				GCM,
 				size_input_domain:int, 
 				Region:str, 
@@ -180,7 +180,7 @@ def make_inputs(GCMLike,
 			): # for combined regions, each sample gets a number so that we know to which region it corresponds
 	# Make input
 	i2D, i1D, VAR_LIST = input_maker(
-		GCMLike=GCMLike,
+		UPRCM=UPRCM,
 		GCM = GCM,
 		size_input_domain=size_input_domain,
 		stand=True,  # standardization
@@ -197,7 +197,7 @@ def make_inputs(GCMLike,
 	
 	# Make a non standardised version for plots:
 	i2D_ns, i1D_ns, var_list = input_maker(
-		GCMLike=GCMLike,
+		UPRCM=UPRCM,
 		GCM = GCM,
 		size_input_domain=size_input_domain,
 		stand=False,  # standardization

@@ -15,8 +15,9 @@ import random as rn
 import pandas as pd 
 import math
 from datetime import datetime
-
-
+import seaborn as sns
+import matplotlib
+from matplotlib.ticker import LogFormatter 
 from dataFunctions import *
 from config import *
 from reproducibility import *
@@ -170,9 +171,9 @@ calculates RMSE between the timeseries of each pixel (i,j) of prediction and tar
 def calculateRMSE(preds, true_smb, ignoreSea=True, normalised = True, squared = False):
     predictions = torch.tensor(preds).clone().detach()
     target = torch.tensor(true_smb).clone().detach()
-    max_ = np.max(np.array(true_smb))
-    min_ = np.min(np.array(true_smb))
-    
+    max_ = np.nanmax(np.array(true_smb))
+    min_ = np.nanmin(np.array(true_smb))
+        
     if normalised: 
         divident = (max_-min_)
     else:
@@ -194,18 +195,18 @@ def calculateRMSE(preds, true_smb, ignoreSea=True, normalised = True, squared = 
 
 
 
-
-
 def calculateMetrics(preds, true_smb, target_dataset, train_set, REGION, ignoreSea):
-    PearsonCorr = calculatePearson(preds, true_smb, ignoreSea)
-    Wasserstein = calculateWasserstein(preds, true_smb, ignoreSea)
-    ROV = calculateROV(preds, true_smb, ignoreSea)
-    MSE = calculateRMSE(preds, true_smb, ignoreSea, normalised = False, squared = True)
-    RMSE = calculateRMSE(preds, true_smb, ignoreSea, normalised = False, squared = False)
-    NRMSE = calculateRMSE(preds, true_smb, ignoreSea, normalised = True, squared = False)
-    PearsonCorrAn = calculatePearsonAnom(preds, true_smb, target_dataset, train_set, REGION, ignoreSea)
-    ROD = calculateROD(true_smb, preds)
-    return PearsonCorr, Wasserstein, ROV, MSE, RMSE, NRMSE, PearsonCorrAn, ROD
+    metrics = {}
+    metrics["PearsonCorr"] = calculatePearson(preds, true_smb, ignoreSea)
+    metrics["Wasserstein"] = calculateWasserstein(preds, true_smb, ignoreSea)
+    metrics["ROV"] = calculateROV(preds, true_smb, ignoreSea)
+    metrics["MSE"] = calculateRMSE(preds, true_smb, ignoreSea, normalised = False, squared = True)
+    metrics["RMSE"] = calculateRMSE(preds, true_smb, ignoreSea, normalised = False, squared = False)
+    metrics["NRMSE"] = calculateRMSE(preds, true_smb, ignoreSea, normalised = True, squared = False)
+    metrics["PearsonCorrAn"] = calculatePearsonAnom(preds, true_smb, target_dataset, train_set, REGION, ignoreSea)
+    metrics["ROD"] = calculateROD(true_smb, preds)
+    
+    return metrics
 
 
 def metricsData(data):
@@ -232,29 +233,32 @@ plotPearsonCorr: Plot a 2D plot whit its correlation value for each pixel (i,j)
 
 
 def plotPearsonCorr(
-    target_dataset, samplecorr, mean, ax, vmin, vmax, region="Whole Antarctica", cmap = 'GnBu'
+    target_dataset, samplecorr, mean, ax, region="Whole Antarctica", cmap = 'GnBu', type  = 'RCM', colorbar = True
 ):
-    if region != "Whole Antarctica":
+    if type == 'RCM':
         ds = createLowerTarget(
-            target_dataset, region=region, Nx=64, Ny=64, print_=False
-        )
+                target_dataset, region=region, Nx=64, Ny=64, print_=False
+            )
     else:
-        ds = target_dataset
+        ds = createLowerInput(target_dataset, region="Larsen", Nx=48, Ny=25, print_=False)
+        ds = ds.where(ds.y>0, drop=True)
+
     coords = {"y": ds.coords["y"], "x": ds.coords["x"]}
     dftrain = xr.Dataset(coords=coords, attrs=ds.attrs)
     dftrain["Correlation"] = xr.Variable(dims=("y", "x"), data=samplecorr[:, :, 0])
-    dftrain.Correlation.plot(
+    im = dftrain.Correlation.plot(
         ax=ax,
         x="x",
         transform=ccrs.SouthPolarStereo(),
-        add_colorbar=True,
+        add_colorbar=colorbar,
         cmap=cmap,
-        vmin=vmin,
+        vmin=-1,
         vmax=1,
     )
     ax.coastlines("10m", color="black", linewidth = 1)
     ax.gridlines()
     ax.set_title("Correlation, mean:{:.2f}".format(mean))
+    return im
 
 
 """
@@ -269,7 +273,7 @@ plotWasserstein: Plot a 2D plot whit its wasserstein distance for each pixel (i,
 
 
 def plotWasserstein(
-    target_dataset, samplewass, mean, ax, vmin, vmax, region="Whole Antarctica", cmap = 'GnBu'
+    target_dataset, samplewass, mean, ax, vmin, vmax, region="Whole Antarctica", cmap = 'GnBu', colorbar = True
 ):
     if region != "Whole Antarctica":
         ds = createLowerTarget(
@@ -280,18 +284,20 @@ def plotWasserstein(
     coords = {"y": ds.coords["y"], "x": ds.coords["x"]}
     dftrain = xr.Dataset(coords=coords, attrs=ds.attrs)
     dftrain["Wasserstein"] = xr.Variable(dims=("y", "x"), data=samplewass[:, :, 0])
-    dftrain.Wasserstein.plot(
+    im = dftrain.Wasserstein.plot(
         ax=ax,
         x="x",
         transform=ccrs.SouthPolarStereo(),
-        add_colorbar=True,
+        add_colorbar=colorbar,
         cmap=cmap,
         vmin=vmin,
         vmax=vmax,
-    )
+        norm=matplotlib.colors.LogNorm()
+    )    
     ax.coastlines("10m", color="black", linewidth = 1)
     ax.gridlines()
     ax.set_title("Wasserstein distance, mean:{:.2f}".format(mean))
+    return im
 
 
 """
@@ -315,7 +321,7 @@ def plotROV(target_dataset, samplerov, mean, ax, vmin, vmax, region="Whole Antar
     coords = {"y": ds.coords["y"], "x": ds.coords["x"]}
     dftrain = xr.Dataset(coords=coords, attrs=ds.attrs)
     dftrain["ROV"] = xr.Variable(dims=("y", "x"), data=samplerov[:, :, 0])
-    dftrain.ROV.plot(
+    im = dftrain.ROV.plot(
         ax=ax,
         x="x",
         transform=ccrs.SouthPolarStereo(),
@@ -350,7 +356,7 @@ def plotROD(ROD, target_dataset, ax, REGION, cmap = 'GnBu'):
     dftrain = xr.Dataset(coords=coords, attrs=ds.attrs)
     dftrain["ROD"] = xr.Variable(dims=("y", "x"), data=ROD_Mean[:, :, 0])
     cmap = cmap
-    dftrain.ROD.plot(
+    im = dftrain.ROD.plot(
         ax=ax,
         x="x",
         transform=ccrs.SouthPolarStereo(),
@@ -377,7 +383,7 @@ plotRMSE: Plot a 2D plot whit its RMSE for each pixel (i,j)
 
 
 def plotNRMSE(
-    target_dataset, samplermse, mean, ax, vmin, vmax, region="Whole Antarctica", cmap = "GnBu"
+    target_dataset, samplermse, mean, ax, vmin, vmax, region="Whole Antarctica", cmap = "GnBu", normalised = False, colorbar = True
 ):
     if region != "Whole Antarctica":
         ds = createLowerTarget(
@@ -387,20 +393,36 @@ def plotNRMSE(
         ds = target_dataset
     coords = {"y": ds.coords["y"], "x": ds.coords["x"]}
     dftrain = xr.Dataset(coords=coords, attrs=ds.attrs)
-    dftrain["RMSE"] = xr.Variable(dims=("y", "x"), data=samplermse[:, :, 0])
     # cmap = 'RdYlBu_r'
-    dftrain.RMSE.plot(
-        ax=ax,
-        x="x",
-        transform=ccrs.SouthPolarStereo(),
-        add_colorbar=True,
-        cmap=cmap,
-        vmin=vmin,
-        vmax=vmax,
-    )
+    if normalised:
+        dftrain["NRMSE"] = xr.Variable(dims=("y", "x"), data=samplermse[:, :, 0])
+        im = dftrain.NRMSE.plot(
+            ax=ax,
+            x="x",
+            transform=ccrs.SouthPolarStereo(),
+            add_colorbar=colorbar,
+            cmap=cmap,
+            vmin=vmin,
+            vmax=vmax,
+            norm=matplotlib.colors.LogNorm()
+        )
+    else:
+        dftrain["RMSE"] = xr.Variable(dims=("y", "x"), data=samplermse[:, :, 0])
+        im = dftrain.RMSE.plot(
+            ax=ax,
+            x="x",
+            transform=ccrs.SouthPolarStereo(),
+            add_colorbar=colorbar,
+            cmap=cmap,
+            vmin=vmin,
+            vmax=vmax,
+            norm=matplotlib.colors.LogNorm()
+        )
     ax.coastlines("10m", color="black", linewidth = 1)
     ax.gridlines()
     ax.set_title("NRMSE, mean:{:.2f}".format(mean))
+    
+    return im
 
 """
 plotMetrics: Plot all metrics for each pixel (i,j)
@@ -487,7 +509,7 @@ def mean_relative_percent(ytrue, ypred):
     return 2*(ytrue-ypred)/(np.abs(ytrue)+np.abs(ypred))
 
 
-def plotGCMTimeseries(true_smb_Larsen, preds_Larsen, GCMLike, PearsonCorr, target_dataset, train_set, points_GCM, points_RCM, REGION):
+def plotGCMTimeseries(true_smb_Larsen, preds_Larsen, UPRCM, PearsonCorr, target_dataset, train_set, points_GCM, points_RCM, REGION):
     f = plt.figure(figsize=(25, 30))
     xticks = pd.date_range(datetime(2088, 1, 1), datetime(2100, 1, 1), freq="YS")
     
@@ -496,7 +518,7 @@ def plotGCMTimeseries(true_smb_Larsen, preds_Larsen, GCMLike, PearsonCorr, targe
     randTime = rn.randint(0, len(true_smb_Larsen) - 1)
     
     ## PLOT GCM: 
-    dsGCM = createLowerInput(GCMLike, region=REGION, Nx=48, Ny=25, print_=False)
+    dsGCM = createLowerInput(UPRCM, region=REGION, Nx=48, Ny=25, print_=False)
     dsGCM.RF.isel(time=randTime).plot(x="x", ax=ax1, transform=ccrs.SouthPolarStereo())
     ax1.coastlines("10m", color="white")
     ax1.gridlines()
@@ -676,7 +698,7 @@ def randomPoints_Losses(
     preds_Larsen_RMSE,
     preds_Larsen_NRMSE,
     target_dataset,
-    GCMLike,
+    UPRCM,
     train_set,
     region: str,
     N:int = 4,
@@ -699,7 +721,7 @@ def randomPoints_Losses(
     ds = createLowerTarget(target_dataset, region=region, Nx=64, Ny=64, print_=False)
     
     randTime = rn.randint(0, len(true_smb_Larsen) - 1)
-    dt = pd.to_datetime([GCMLike.time.isel(time=randTime).values])
+    dt = pd.to_datetime([UPRCM.time.isel(time=randTime).values])
     time = str(dt.date[0])
     meanTarget = np.nanmean(np.array(true_smb_Larsen), axis=0)
     
@@ -809,71 +831,5 @@ def randomPoints_Losses(
         ax.legend()
         i += 2
     plt.suptitle(f"Three time series at different coordinates {time}")
-    
-    
-        
-        
-def ComparMetrics(
-    PearsonCorr,
-    Wasserstein,
-    RMSE,
-    PearsonCorrAn, 
-    target_dataset,
-    models,
-    region: str,
-    figsize=(20, 10)):
-    fig = plt.figure(figsize=figsize)
-    
-    # Correlation
-    vmin, vmax = np.nanmin([PearsonCorr[0],PearsonCorr[1]]), np.nanmax([PearsonCorr[0],PearsonCorr[1]])
-    ax = plt.subplot(2, 4, 1, projection=ccrs.SouthPolarStereo())
-    plotPearsonCorr(
-        target_dataset, PearsonCorr[0], np.nanmean(PearsonCorr[0]), ax, vmin, vmax, region=region
-    )
-    ax.set_title("[{}] Correlation, mean:{:.2f}".format(models[0], np.nanmean(PearsonCorr[0])))
-    ax = plt.subplot(2, 4, 2, projection=ccrs.SouthPolarStereo())
-    plotPearsonCorr(
-        target_dataset, PearsonCorr[1], np.nanmean(PearsonCorr[1]), ax, vmin, vmax, region=region
-    )
-    ax.set_title("[{}] Correlation, mean:{:.2f}".format(models[1], np.nanmean(PearsonCorr[1])))
-    
-    # Correlation without seasonality:
-    vmin, vmax = np.nanmin([PearsonCorrAn[0],PearsonCorrAn[1]]), np.nanmax([PearsonCorrAn[0],PearsonCorrAn[1]])
-    ax = plt.subplot(2, 4, 3, projection=ccrs.SouthPolarStereo())
-    plotPearsonCorr(
-        target_dataset, PearsonCorrAn[0], np.nanmean(PearsonCorrAn[0]), ax, vmin, vmax, region=region
-    )
-    ax.set_title("[{}] Corr w/o s, mean:{:.2f}".format(models[0], np.nanmean(PearsonCorrAn[0])))
-    ax = plt.subplot(2, 4, 4, projection=ccrs.SouthPolarStereo())
-    plotPearsonCorr(
-        target_dataset, PearsonCorrAn[1], np.nanmean(PearsonCorrAn[1]), ax, vmin, vmax, region=region
-    )
-    ax.set_title("[{}] Corr w/o s, mean:{:.2f}".format(models[1], np.nanmean(PearsonCorrAn[1])))
-    
-    # Wasserstein:
-    vmin, vmax = np.nanmin([Wasserstein[0],Wasserstein[1]]), np.nanmax([Wasserstein[0],Wasserstein[1]])
-    ax = plt.subplot(2, 4, 5, projection=ccrs.SouthPolarStereo())
-    plotWasserstein(
-        target_dataset, Wasserstein[0], np.nanmean(Wasserstein[0]), ax, vmin, vmax, region=region
-    )
-    ax.set_title("[{}] Wasserstein, mean:{:.2f}".format(models[0], np.nanmean(Wasserstein[0])))
-    ax = plt.subplot(2, 4, 6, projection=ccrs.SouthPolarStereo())
-    plotWasserstein(
-        target_dataset, Wasserstein[1], np.nanmean(Wasserstein[1]), ax, vmin, vmax, region=region
-    )
-    ax.set_title("[{}] Wasserstein, mean:{:.2f}".format(models[1], np.nanmean(Wasserstein[1])))
-    
-    # RMSE:
-    vmin, vmax = np.nanmin([RMSE[0],RMSE[1]]), np.nanmax([RMSE[0],RMSE[1]])
-    ax = plt.subplot(2, 4, 7, projection=ccrs.SouthPolarStereo())
-    plotNRMSE(
-        target_dataset, RMSE[0], np.nanmean(RMSE[0]), ax, vmin, vmax, region=region
-    )
-    ax.set_title("[{}] RMSE, mean:{:.2f}".format(models[0], np.nanmean(RMSE[0])))
-    ax = plt.subplot(2, 4, 8, projection=ccrs.SouthPolarStereo())
-    plotNRMSE(
-        target_dataset, RMSE[1], np.nanmean(RMSE[1]), ax, vmin, vmax, region=region
-    )
-    ax.set_title("[{}] RMSE, mean:{:.2f}".format(models[1], np.nanmean(RMSE[1])))
     
     
