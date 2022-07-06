@@ -25,6 +25,8 @@
 \usepackage{stmaryrd}
 \usepackage{verbatim}
 \usepackage{siunitx}
+\usepackage{algpseudocode}
+\usepackage{algorithm}
 
 
 \usepackage{hyperref}
@@ -161,7 +163,7 @@ where $X$ are low-resolution variables from a global climate simulation over an 
     \item Why: According to studies comparing climate models conducted in~\cite{Kittel, Agosta2015}, ACCESS 1.3 and MAR(ACCESS 1.3) were the models that most accurately represented the present Antarctic climate in comparison to ERA-Interim. For this reason, we chose MAR(ACCESS 1.3) and its corresponding global climate model as climate simulations for our Emulator.  
     \item Time-frame: historical values from 1980-2006 and future climate simulation RCP 8.5~\cite{Moss2010} from 2006-2100. 
     \item Grid and resolution: the RCM grid is in south polar stereographic coordinates of $35 \times 35$ \si{km} resolution. The GCM resolution is of 1.25° latitude by 1.875° longitude (approximately $68 \times 206$ \si{km}), using a staggered Arakawa C grid~\cite{ACCESS13, ACCESS13_2}. 
-    \item Reprojection: So that both regional and global climate models are in the same projection system, we project the GCM to south polar stereographic coordinates (see Annex for details [REF ANNEX]). 
+    \item Reprojection: So that both regional and global climate models are in the same projection system, we project the GCM to south polar stereographic coordinates (see Annex for details~\ref{sec:preproc-GCM}). 
 \end{itemize}
 
 \begin{figure}[!t]
@@ -261,7 +263,7 @@ where $\bar{Z}_{\mathrm{ref},z}$ and $\sigma(Z_{\mathrm{ref},z})$ are respective
     \item  Last layers: up-sampling layer (light blue arrow) to reach target size ($64\times 64$) and $1\times1$ convolution (pink arrow) to change the number of channels from $64$ to $1$, and outputs a single image representing the SMB values predicted by the network at time-step $t$.
     \item Attention: Convolutional block attention modules (CBAMs, yellow arrow)~\cite{smatunet} are placed after each double convolution in the Encoder and used to detect important features over the channels and spatial regions of the inputs. In CBAMs, the attention mechanism is first applied over the channels of the image and then the spatial dimension. Note that the input to the next layer of the Encoder is not the attention feature map (white block) but the convoluted and downsampled image of the previous layer (dark blue block). This way, the original image features are preserved throughout the Encoder layers. Finally, the attention blocks are fed through skip-connections to the corresponding Decoder layer to be concatenated~\cite{smatunet}. Contrary to the DSC convolutions used in the Encoder and Decoder, CBAMs use regular convolutions.  
     \end{itemize}
-    \item Code: Architecture implemented in PyTorch 1.11 and available on LINK GITHUB
+    \item Code: Architecture implemented in PyTorch 1.11 and available on \href{https://github.com/marvande/master-thesis}{GitHub}
 \end{itemize}
 
 \subsection{Perfect model framework}\label{subsec:perfect-model}
@@ -618,7 +620,7 @@ Overall, while the Emulator is very fast in training and prediction, the primary
 %%%%%%%%%%%%%%%%%%%%
 \begin{itemize}
     \item The idea of Emulator: In this study, we built a machine learning model called the Emulator that emulates local-scale surface mass balance (SMB) values over the Antarctic Peninsula by learning the downscaling function of a regional climate model (RCM). This means that our model, when given low-resolution atmospheric variables from a global climate model (GCM), can reconstruct a high-resolution image of SMB from a regional climate model. Compared to an RCM, the Emulator is designed to be computationally cheaper and faster.   
-    \item How Emulator was built: Our model is an extension of a U-Net model proposed in~\cite{Doury} that emulated near-surface temperature over the south of France. We extended their U-net by adding attention mechanisms in the Encoder of the U-Net and replaced traditional convolutional operations with depthwise-separable convolutions. Furthermore, to account for the different scales of SMB values across the Antarctic Peninsula, we change the original MSE loss to a normalised RMSE. 
+    \item How the Emulator was built: Our model is an extension of a U-Net model proposed in~\cite{Doury} that emulated near-surface temperature over the south of France. We extended their U-net by adding attention mechanisms in the Encoder of the U-Net and replaced traditional convolutional operations with depthwise-separable convolutions. Furthermore, to account for the different scales of SMB values across the Antarctic Peninsula, we change the original MSE loss to a normalised RMSE. 
     \item Training setting: For training our model, we propose two frameworks. The first follows the perfect model framework from~\cite{Doury} where the Emulator receives low-resolution inputs from the RCM instead of the GCM. For this, we create large-scale features from RCM with interpolation. This setting is designed so that the model learns the downscaling function undisturbed by potential RCM-GCM inconsistencies and biases. In the second framework, we train the model on large-scale features directly sourced from the GCM to evaluate whether it can learn those inconsistencies. 
     \item Computational speed: Training our model takes under ten minutes on a GPU, and predictions are almost instantaneous, but data gathering and pre-processing can be time-consuming. However, our Emulator is significantly faster than an RCM simulation, which can take several weeks on a supercomputer. 
     \item Evaluation of the Emulators:
@@ -629,8 +631,11 @@ Overall, while the Emulator is very fast in training and prediction, the primary
         Assuming that RCM-GCM inconsistencies exist for a valid reason and that we wish the Emulator to account for them, our results indicate that a perfect model framework might not be needed and that our model can learn them.  
     \end{itemize}
     
-    
+In conclusion, we build an machine learning RCM-Emulator that can predict SMB over the Antarctic Peninsula significantly faster than computing an RCM simulation. 
 \end{itemize}
+
+\section{Code availability}
+All notebooks and python scrips for pre-processing and machine learning are available on our \href{https://github.com/marvande/master-thesis}{GitHub} repository~\cite{GitHub}. For any questions or additional information about the code, email: \href{mailto:marijn.vandermeer@bluewin.ch}{marijn.vandermeer@bluewin.ch}. 
 
 \cleardoublepage
 \phantomsection
@@ -639,30 +644,61 @@ Overall, while the Emulator is very fast in training and prediction, the primary
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Appendices are optional
 \appendix
+
 \chapter{Data processing}
-\begin{figure}[!t]
+All pre-processing of the GCM is done on Pangeo, a community platform for Big Data geoscience. 
+\section{Pre-processing of the GCM}\label{sec:preproc-GCM}
+\begin{itemize}
+    \item We downloaded the ACCESS 1.3 data from~\cite{NCI}. We chose the dataset with atmospheric variables (Amon) for CMIP5 and r1i1p1 ensemble. We downloaded the historical and future simulation RCP 8.5, which are monthly mean aggregations of daily values. The data can also be directly downloaded with the wget script on our \href{https://github.com/marvande/master-thesis}{GitHub}. 
+    \item From this dataset, we chose the eight variables as seen in Table~\ref{tab:features}. 
+    \item Antarctica: To restrict the dataset size and because we were only interested in Antarctica, we cut the GCM data so that its latitude was between $-40$ and $-90$ $\degree C$. 
+    \item Reprojecting: because the GCM is in latitude-longitude coordinates, but the RCM is in polar stereographic coordinates, we reprojected the GCM to the same projection system as the RCM. We did this by upsampling the RCM stereographic grid to cover approximately the same resolution as the GCM, and we interpolated the GCM on that grid. 
+    \item Units: for the following variables, the units were changed so that they coincided with the RCM. 
+    \begin{itemize}
+        \item Precipitation: from \si{kg m^{-2}s^{-1}} to \si{mmWe/day}
+        \item Pressure: from \si{pa} to \si{hpa}
+        \item Temperature: from \si{K} to \si{C}
+        \item Specific humidity: from \si{g/g} to \si{g/Kg}
+    \end{itemize}
+    \item Smoothing average: GCM outputs were smoothed by a 3x3 moving average filter to follow the same procedure as in~\cite{Doury}. 
+\end{itemize}
+
+\section{Pre-processing of the RCM}\label{sec:preproc-RCM}
+\begin{itemize}
+    \item Because the GCM data we had was in monthly frequency, we did a monthly mean aggregation for the RCM data. We also changed the spatial units from \si{km} to \si{m} to be in accordance with GCM units. 
+    \item Surface values: variables like the winds, temperature, and specific humidity were provided for seven pressure levels while we needed surface-level values. Pressure levels were: 200, 500, 600, 700, 800, 850, 925 \si{hpa}. Each pressure level had NaN values where it intersected with the surface. Therefore, for each point $p$ in the RCM domain, we took the last non-NaN value on the highest possible pressure level as the surface value.  
+    \item Winds: RCM winds variables were given as x and y-components while GCM winds were Northward and Eastward. Therefore RCM wind components needed to be reprojected to become North/Eastward winds. First we calculated a grid that gave the latitude ($\mathrm{lat}$) and longitude ($\mathrm{lon}$) coordinates for each point $(i,j)\subset X,Y $ in the RCM polar stereographic grid. Then, for each point $(i,j)$ we applied Algorithm~\ref{alg:wind-components}.  
+    
+    \begin{algorithm}
+    \caption{Transformation of wind components into Northward-Eastward winds}\label{alg:wind-components}
+    \begin{algorithmic}[1]
+    \State $\operatorname{GEddxx} = 90$
+    \State $\Delta \phi = 90 - \operatorname{GEddxx}$
+    \State $dr = \pi / 180$ 
+    \For{$i,j \in X,Y$}
+    \State $\phi \gets -1*dr*(\mathrm{lon}[i,j] + \Delta \phi)$
+    \State $\mathrm{cphi} \gets cos(-\phi)$
+    \State $\mathrm{sphi} \gets sin(-\phi)$
+    \State  $\mathrm{windEast}[i, j] \gets \mathrm{cphi} * \mathrm{windX}[i, j] - \mathrm{sphi} * \mathrm{windY}[i,j]$ \Comment{Eastward wind component}
+    \State $\mathrm{windNorth}[i, j] \gets  \mathrm{sphi} * \mathrm{windX}[i, j] + \mathrm{cphi} * \mathrm{windY}[i, j]$ \Comment{Northward wind component}
+    \EndFor
+    \end{algorithmic}[1]
+    \end{algorithm}
+    
+    \item Creation of UPRCM: to create GCM-like low-resolution features from the RCM, we reprojected the RCM on the GCM grid by interpolation. Then, we used the same moving average filter for the GCM to smooth the data (Fig.~\ref{fig:training-data-flow}). Finally, because there is no precipitation variable in the RCM, we created one by adding the snowfall and rainfall variables. 
+    \begin{equation}
+        \mathrm{PR} = \mathrm{SF} + \mathrm{RF}
+    \end{equation}
+\end{itemize}
+
+\begin{figure}[!htb]
   \centering
-  \includegraphics[width=\columnwidth]{images/data-flow.png}
-  \caption []{\small Training data flow}
+  \includegraphics[width=\columnwidth]{images/data-flow.pdf}
+  \caption []{\small RCM data flow to create UPRCM data.}
   \vspace{-3mm}
   \label{fig:training-data-flow}
 \end{figure}
 
-\section{Pre-processing of RCM}
-\begin{itemize}
-    \item  Because GCM data we have is monthly frequency, do monthly mean aggregation for RCM data.
-\end{itemize}
-\section{Pre-processing of GCM}
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\include{table1}
-% In case you ever need an (optional) appendix.
-%
-% You need the following items:
-% \begin{itemize}
-% \item A box
-% \item Crayons
-% \item A self-aware 5-year old
-% \end{itemize}
 
 \end{document}
