@@ -32,7 +32,7 @@
 \usepackage{hyperref}
 \usepackage{graphicx}
 
-\title{Regional Climate Model Emulator based on Deep Learning: future SMB predictions over Antarctica}
+\title{Regional Climate Model Emulator based on Deep Learning: SMB predictions over Antarctica}
 \author{Marijn van der Meer}
 \supervisor{Sophie de Roda Husman}
 \adviser{Prof. Dr. sc. EPFL Martin Jäggi}
@@ -67,25 +67,50 @@ English abstract. For other projects this is optional.
 \chapter{Introduction}
 %%%%%%%%%%%%%%%%%%%%%%
 
+\textbf{Flow of introduction section}:
+\begin{itemize}
+    \item Par 0: short summary of project
+    \item Par 1: discuss the setting
+    \item Par 2: introduce the main challenge that you see
+    \item Par 3: lists why related work is insufficient
+    \item Par 4-5: discuss your approach and why it is needed
+    \item Par 6: introduce your thesis statement
+    \item Par 7: highlight some of your results
+    \item Par 8: discusses your core contribution
+\end{itemize}
+ 
+ 
+\begin{itemize}
+    
+    \item \textbf{Paragraph 0} - Short summary of project: This thesis aimed to develop a machine learning framework that learns the downscaling function of regional climate models. Specifically, we wanted to emulate i.e., imitate, regional surface mass balance values of the Antarctic ice sheet on the Antarctic Peninsula. We wanted to create a machine learning model that inputs low-resolution climate variables and outputs a high-resolution surface mass balance map. Note here that by low-resolution, we mean coarse images; with high resolution, we mean fine images. We got inspired for our framework by a paper by a Meteo France group that used machine learning to emulate regional near-surface temperature over western Europe~\cite{Doury}.
+    \item \textbf{Paragraph 1}-Discuss the setting: Antarctic ice sheet and SMB. Why is it important?
+    \begin{itemize}
+        \item AIS: The Antarctic ice sheet (AIS) is the largest class of glaciers and contains the majority of ice on Earth, with a volume of 30 million cubic kilometers~\cite{Icesheetsquick}. It extends over 14 million square kilometers, roughly the combined area of the US and Mexico~\cite{AntarcticIceSheet}. This amount of ice constantly changes through melting processes and with the addition of new mass from snow and ice.
+        \item SMB: A primary variable used to observe the AIS is surface mass balance (SMB). SMB is the net balance between inputs and outputs of mass (of ice and snow) on top of the ice sheet~\cite{Lenaerts}. It is influenced by the addition of mass through precipitation and snow‐transporting winds and ablation via erosion, sublimation, and run-off~\cite{Kittel}. At any point, an SMB close to zero indicates an arid climate with little change in the ice mass, while a positive SMB means that there was a lot of addition of mass, through precipitation, for example. On the other hand, a negative SMB means that a glacier is losing mass. In the case of ice sheets and grounded glaciers, this mass loss directly affects sea-level rise~\cite{icesheet}. 
+        
+        If Antarctica's ice sheet were to melt suddenly, sea levels would rise to approximately $60$\si{m}~\cite{Kittel, Fretwell, Morlighem}, making the AIS the most significant potential contributor to sea-level rise. Unfortunately, the AIS has been steadily losing mass since 2002~\cite{Shepherd, Mottram}, mainly because of calving\footnote{Calving is the process of chunks of ice breaking off from the edge of a glacier~\cite{Marshak}} and melting at the water-ice interface underneath ice shelves (submarine melting)~\cite{Kittel, Mottram, Rignot}. Because the SMB is a good indicator of stability and evolution of ice shelves, it is therefore imperative to have a precise estimation of the SMB of the AIS~\cite{icesheet}.
+    \end{itemize}
+    \item \textbf{Paragraph 2} - Can introduce the main challenge that you see: modelling SMB is very difficult. Done mainly with climate simulations but computationally expensive. 
+    \begin{itemize}
+        \item Though SMB can be monitored with on-site tools, in this project, we used data from satellite remote sensing data. 
+        \item To understand and predict the behaviour of different climate phenomena, climatologists have come up with complex climate models, which are simulations of climate variables over time and space in different parts of the world. 
+        \item At our current technological level, the complexity of these climate models is a compromise between computational costs, resolution of pixels and the width of region that is covered. 
+        \item Depending on the spatial resolution we want, we usually define two types of climate models: global climate models (GCM) and regional models (RCM). 
+    \end{itemize}
+    \item third paragraph lists why related work is insufficient: emulator done for temperature but not for SMB over Antarctica
+    \item fourth and fifth paragraphs discuss your approach and why it is needed: emulator from doury extended to smb
+    \item sixth paragraph will introduce your thesis statement. Think how you can distill the essence of your thesis into a single sentence.
+    \item The seventh paragraph will highlight some of your results
+    \item The eights paragraph discusses your core contribution.
+
+\end{itemize}
+
+
 \begin{itemize}
     \item Traditional U-Net is a fully convolutional CNN architecture specifically developed for biomedical image segmentation~\cite{Ronneberger2015}.  
         \item U-Net shows high performance in classification and segmentation tasks where the network is trained to predict a class for each pixel. But U-Nets are also used for image processing tasks, such as super resolution. They have been found to be particularly effective in cases where the output and inputs are of similar size. In our case, we applied it to a time series prediction task in which the network has to predict an exact value for each pixel.
     \item using attention in a CNN facilitates the network to focus on specific parts of the input. 
 \end{itemize}
-
-
-
-The introduction is a longer writeup that gently eases the reader into your
-thesis~\cite{dinesh20oakland}. Use the first paragraph to discuss the setting.
-In the second paragraph you can introduce the main challenge that you see.
-The third paragraph lists why related work is insufficient.
-The fourth and fifth paragraphs discuss your approach and why it is needed.
-The sixth paragraph will introduce your thesis statement. Think how you can
-distill the essence of your thesis into a single sentence.
-The seventh paragraph will highlight some of your results
-The eights paragraph discusses your core contribution.
-
-This section is usually 3-5 pages.
 
 Surface mass balance (SMB) provides mass input to the surface of the Antarctic and Greenland Ice Sheets and therefore comprises an important control on ice sheet mass balance and resulting contribution to global sea level change. As ice sheet SMB varies highly across multiple scales of space (meters to hundreds of kilometers) and time (hourly to decadal), it is notoriously challenging to observe and represent in models. In addition, SMB consists of multiple components, all of which depend on complex interactions between the atmosphere and the snow/ice surface, large-scale atmospheric circulation and ocean conditions, and ice sheet topography.~\cite{Lenaerts}
 
@@ -134,6 +159,7 @@ Results
 \section{Diverging future surface mass balance between the Antarctic ice shelves and grounded ice sheet \cite{Kittel}}
 
 \section{SmaAt-UNet: Precipitation Nowcasting using a Small Attention-UNet Architecture~\cite{smatunet}}
+
 
 
 %%%%%%%%%%%%%%%%
