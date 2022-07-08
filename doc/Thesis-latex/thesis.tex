@@ -86,79 +86,38 @@ English abstract. For other projects this is optional.
     \item \textbf{Paragraph 1}-Discuss the setting: Antarctic ice sheet and SMB. Why is it important?
     \begin{itemize}
         \item AIS: The Antarctic ice sheet (AIS) is the largest class of glaciers and contains the majority of ice on Earth, with a volume of 30 million cubic kilometers~\cite{Icesheetsquick}. It extends over 14 million square kilometers, roughly the combined area of the US and Mexico~\cite{AntarcticIceSheet}. This amount of ice constantly changes through melting processes and with the addition of new mass from snow and ice.
-        \item SMB: A primary variable used to observe the AIS is surface mass balance (SMB). SMB is the net balance between inputs and outputs of mass (of ice and snow) on top of the ice sheet~\cite{Lenaerts}. It is influenced by the addition of mass through precipitation and snow‐transporting winds and ablation via erosion, sublimation, and run-off~\cite{Kittel}. At any point, an SMB close to zero indicates an arid climate with little change in the ice mass, while a positive SMB means that there was a lot of addition of mass, through precipitation, for example. On the other hand, a negative SMB means that a glacier is losing mass. In the case of ice sheets and grounded glaciers, this mass loss directly affects sea-level rise~\cite{icesheet}. 
+        \item SMB: A primary variable used to observe the AIS is surface mass balance (SMB). SMB is the net balance between inputs and outputs of mass (of ice and snow) on top of the ice sheet~\cite{Lenaerts2019}. It is influenced by the addition of mass through precipitation and snow‐transporting winds and ablation via erosion, sublimation, and run-off~\cite{Kittel}. At any point, an SMB close to zero indicates an arid climate with little change in the ice mass, while a positive SMB means that there was a lot of addition of mass, through precipitation, for example. On the other hand, a negative SMB means that a glacier is losing mass. In the case of ice sheets and grounded glaciers, this mass loss directly affects sea-level rise~\cite{icesheet}. 
         
         If Antarctica's ice sheet were to melt suddenly, sea levels would rise to approximately $60$\si{m}~\cite{Kittel, Fretwell, Morlighem}, making the AIS the most significant potential contributor to sea-level rise. Unfortunately, the AIS has been steadily losing mass since 2002~\cite{Shepherd, Mottram}, mainly because of calving\footnote{Calving is the process of chunks of ice breaking off from the edge of a glacier~\cite{Marshak}} and melting at the water-ice interface underneath ice shelves (submarine melting)~\cite{Kittel, Mottram, Rignot}. Because the SMB is a good indicator of stability and evolution of ice shelves, it is therefore imperative to have a precise estimation of the SMB of the AIS~\cite{icesheet}.
     \end{itemize}
     \item \textbf{Paragraph 2} - Can introduce the main challenge that you see: modelling SMB is very difficult. Done mainly with climate simulations but computationally expensive. 
     \begin{itemize}
-        \item Though SMB can be monitored with on-site tools, in this project, we used data from satellite remote sensing data. 
-        \item To understand and predict the behaviour of different climate phenomena, climatologists have come up with complex climate models, which are simulations of climate variables over time and space in different parts of the world. 
-        \item At our current technological level, the complexity of these climate models is a compromise between computational costs, resolution of pixels and the width of region that is covered. 
-        \item Depending on the spatial resolution we want, we usually define two types of climate models: global climate models (GCM) and regional models (RCM). 
+        \item Though SMB can be monitored with on-site tools, the vastness and climate of Antarctica make this challenging. Therefore, a more reasonable alternative is using the predictions of climate models based on remote sensing data~\cite{Mottram, Lenaerts2019}.  
+        \item To understand and predict the behavior of different climate phenomena, climatologists have come up with complex climate models, which are simulations of climate variables over time and space in different parts of the world. However, at our current technological level, the complexity of these climate models is a compromise between computational costs, resolution of pixels, and the width of the domain that is covered~\cite{Doury}. 
+        \item Depending on the spatial resolution, we usually define two types of climate models: global (GCM) and regional (RCM). GCMs are simulations that cover the whole planet. They are relatively cheap in terms of computational costs because their range is so wide while their resolution is low ($50$-$300$\si{km})~\cite{Doury}. However, for a fine-scale representation of SMB on the AIS, such as its edges or peripheral ice, the resolution of a GCM is too low~\cite{Kittel, Seroussi}. In addition, GCMs do not correctly incorporate critical polar physical processes, such as snow melt, albedo feedback, etc~\cite{Kittel, Lenaerts2016}. 
+        
+        On the other hand, Regional climate models (RCM) are a dynamic downscaling of GCMs, meaning that they are directly created from a specific GCM. They have a higher resolution ($1$-$50$\si{km}) but a smaller domain size. Polar-oriented RCMs such as the Modèle Atmosphérique Régional (MAR) tackle the problem of low spatial resolution of GCMs over the AIS and give a significantly more robust evaluation of mass and energy fluxes changes at the AIS surface~\cite{Kittel, Fyke2018}. Unfortunately, due to the RCMs' higher spatial resolution, they come at a high computational cost (several weeks on supercomputers)~\cite{Doury}. To save on computational costs and time, we were interested in seeing if it is possible to emulate SMB predictions over the AIS from a polar-oriented RCM simulation using a machine learning framework. 
     \end{itemize}
-    \item third paragraph lists why related work is insufficient: emulator done for temperature but not for SMB over Antarctica
-    \item fourth and fifth paragraphs discuss your approach and why it is needed: emulator from doury extended to smb
+    \item \textbf{Paragraph 3} - lists why related work is insufficient: emulator done for temperature but not for SMB over Antarctica
+    \begin{itemize}
+        \item Doury: To our knowledge, there is no machine learning model that emulates regional-scale SMB over Antarctica yet. Therefore, our project is an extension of a machine learning emulator proposed by Doury et al. in~\cite{Doury}. The authors emulated near-surface temperature (TAS) from a high-resolution RCM (CNRM-ALADIN63) over Southwestern Europe using a traditional U-Net. The U-Net is a fully convolutional CNN architecture developed explicitly for biomedical image segmentation~\cite{Ronneberger2015}. It shows high performance in classification and segmentation tasks where the network is trained to predict a class for each pixel. But U-Net models are also used for image processing tasks, such as super-resolution, because they are excellent at gathering pixels belonging to the same object~\cite{Doury}. Moreover, they are particularly effective in cases where the output and inputs are of similar size. Overall, according to Doury et al., this makes them very interesting to use on atmospheric images since the RCM emulator ought to recognize distinct meteorological entities present in the low-resolution inputs of the model to create the corresponding high-resolution image~\cite{Doury}. 
+   
+        They proposed a specific setting called the perfect model framework for training their model. Instead of giving their model low-resolution inputs from their GCM during training, both the low-resolution and high-resolution features came from their RCM. The main reason behind this was that the model aimed to learn the downscaling function of an RCM and that it needed perfect spatial and temporal consistency between the coarse inputs and fine-scaled maps it recreates. However, this cannot be guaranteed between global and regional climate models because of biases and temporal and geographical inconsistencies~\cite{Doury, Sanchez2009, Sanchez2018}. 
+        
+       Their model was a substantial computational gain regarding computing an RCM, with two hours of training on a GPU and predictions under seconds. Furthermore, their emulator evaluated in the perfect model framework, i.e., with coarse inputs from an upscaled RCM, could almost perfectly reproduce the original TAS series. However, though their emulator remains robust when getting GCM inputs, its performance is poorer because of RCM-GCM large-scale decorrelation issues. Furthermore, because the authors did not train it on GCM features, it could not reproduce large-scale inconsistencies between GCMs and RCMs. Because of this, Doury et al. raise the question of the final role of their RCM-emulator since it misses those inconsistencies~\cite{Doury}. 
+    \end{itemize}
+    
+    \item \textbf{Paragraph 4} - discuss your approach and why it is needed: emulator from doury extended to smb
+    \begin{itemize}
+        \item We face several challenges when extending the model from~\cite{Doury} from emulating TAS over Western Europe to SMB over Antarctica. The first problem is that SMB is known to be complex to model because, compared to temperature, it varies highly across multiple scales of space and time. Moreover, as stated by Lenaerts et al. in~\cite{Lenaerts2019}, SMB is impacted by complex interactivity between the atmosphere and the ice sheet surface, large-scale atmosphere circulations, and ice sheet topography. To address the difficulty of modeling SMB, we equip the traditional U-Net used to emulate TAS with attention mechanisms and a normalised RMSE loss designed to handle different ranges in SMB values across our domain. 
+        
+        Using attention in a neural network helps the network to focus on specific parts of the input~\cite{Sanghyun2018} and we were inspired by the SmaAt-UNet proposed by Trebing et al.~\cite{smatunet}. The SmaAt-UNet was used for precipitation nowcasting\footnote{Nowcasting is the prediction of the present, the very near future, and the very recent past state of an weather indicator~\cite{Nowcasting}} and added attention mechanisms in the Encoder of the U-Net and depthwise-separable convolutions (DSC) instead of traditional convolutions, thus reducing the number of parameters of the model. Incorporating both modifications was found by Trebing et al. to improve the model's prediction for some weather patterns. Otherwise, it performed similarly to significantly bigger architectures. 
+    \end{itemize}
     \item sixth paragraph will introduce your thesis statement. Think how you can distill the essence of your thesis into a single sentence.
     \item The seventh paragraph will highlight some of your results
     \item The eights paragraph discusses your core contribution.
 
 \end{itemize}
-
-
-\begin{itemize}
-    \item Traditional U-Net is a fully convolutional CNN architecture specifically developed for biomedical image segmentation~\cite{Ronneberger2015}.  
-        \item U-Net shows high performance in classification and segmentation tasks where the network is trained to predict a class for each pixel. But U-Nets are also used for image processing tasks, such as super resolution. They have been found to be particularly effective in cases where the output and inputs are of similar size. In our case, we applied it to a time series prediction task in which the network has to predict an exact value for each pixel.
-    \item using attention in a CNN facilitates the network to focus on specific parts of the input. 
-\end{itemize}
-
-Surface mass balance (SMB) provides mass input to the surface of the Antarctic and Greenland Ice Sheets and therefore comprises an important control on ice sheet mass balance and resulting contribution to global sea level change. As ice sheet SMB varies highly across multiple scales of space (meters to hundreds of kilometers) and time (hourly to decadal), it is notoriously challenging to observe and represent in models. In addition, SMB consists of multiple components, all of which depend on complex interactions between the atmosphere and the snow/ice surface, large-scale atmospheric circulation and ocean conditions, and ice sheet topography.~\cite{Lenaerts}
-
-
-\section{Regional Climate Model Emulator based on Deep Learning: Concept and First Evaluation of a Novel Hybrid Downscaling Approach \cite{Doury}}
-This paper proposes a novel hybrid downscaling approach that emulates the downscaling function of a a regional climate model.
-
-\begin{itemize}
-\item RCM: EURO-CORDEX simulations based on the CNRM-ALADIN63, 1951-2100 RCP4.5 and RCP8.5
-\item GCM: CNRM-CM5 used in CMIP5 → 6h frequency + sea surface temperature, sea ice cover and aerosol optical depth at monthly frequency
-\item ML model learns the RCM transformation of the large-scale climate information into local-scale
-\item Target variable: near surface temperature (TAS)
-\item Target domain: southwest European domain
-\item Historical period: 1951 to 2005
-\item Scenarios (2006-2100): based on two Representative Concentration Pathways from CMIP5; RCP4.5 and RCP8.5
-\end{itemize}
-Computational performance:
-\begin{itemize}
-    \item U-Net: fully convolutional neural network algorithm
-    \item Substantial computational gain regarding RCM computational cost
-    \begin{itemize}
-        \item 2h training on GPU + downscaling instantaneous
-        \item RCM simulation involves weeks of computation on super-computer
-    \end{itemize}
-\end{itemize}
-Training of model 
-\begin{itemize}
-    \item RCM can be broken down into a large scale transformation and a downscaling function
-    \item Training using existing RCM simulations → learn large scale/local scale relationship in different climates and in future climate
-    \item Training in perfect model framework: input and output to ML model come from same RCM simulation → focus on downscaling function
-    \item Input variable: daily large-scale and low-resolution RCM information (upsampled to GCM like resolution)
-    \item Output variable: daily maps of TAS at RCM resolution (~12 \si{mmWe/day}\sci{km})
-    \item Emulator is RCM-dependent as downscaling function depends on RCM choice
-\end{itemize}
-Results
-\begin{itemize}
-    \item Emulator evaluated in both perfect model (evaluation 1) and GCM worlds (evaluation 2)
-    \item capture very well transformation from low resolution information to high resolution TAS
-    \item robust to different sources of input
-    \item succeeds very well in reproducing high resolution spatial structure and daily variability of the RCM
-    \item evaluation 1 shows that emulator is able to reproduce original series almost perfectly
-    \item training emulator in future climate improves its ability to reproduce warmer climate
-    \item limitations in accurately simulating extreme events and complete climate change magnitude
-    \item RCM-GCM large scales inconsistencies when evaluating on GCM. Does not learn to reproduce large scale transformations (because trained only on RCM)
-\end{itemize}
-\section{Diverging future surface mass balance between the Antarctic ice shelves and grounded ice sheet \cite{Kittel}}
-
-\section{SmaAt-UNet: Precipitation Nowcasting using a Small Attention-UNet Architecture~\cite{smatunet}}
 
 
 
@@ -603,7 +562,7 @@ Discussion section flow:
 \section{Extending the Emulator of near-surface temperature over France to SMB over Antarctica}\label{sec:extension-doury}
 \begin{itemize}
     \item In this study, we extended the machine learning model that emulated near-surface temperature over the south of France, proposed in~\cite{Doury}. 
-    \item In doing this, we were faced with several challenges as SMB is notoriously challenging to observe and represent in models compared to temperature~\cite{Lenaerts}. 
+    \item In doing this, we were faced with several challenges as SMB is notoriously challenging to observe and represent in models compared to temperature~\cite{Lenaerts2019}. 
     \begin{itemize}
         \item HR variable not in LR input: Because temperature is a variable in the GCM and RCM, it was present in the low-resolution features given as input to the model in~\cite{Doury}. In our case, SMB was only available in the RCM. Thus, our Emulator could exclusively reconstruct a high-resolution SMB image given a limited number of other atmospheric variables. This might explain why some regions in the Antarctic Peninsula, especially those with less seasonal patterns, might be harder for the model to reconstruct. We rely on the assumption that our model has a clear physical relationship to learn between our eight large-scale atmospheric variables and local scale SMB, but this might not be true for all points. 
         \item Space variations: Ice sheet SMB varies highly across multiple space and time scales, while temperature tends to be a more stable and seasonal variable. For example, as was discussed in~\ref{sec:res-time-series}, on the Antarctic Peninsula, while some regions have high seasonal amplitude changes in SMB, others have almost none. If they do, it is only with very little difference in amplitude. This was not the case for the near-surface temperature emulated in~\cite{Doury}, where, even though their target domain covered different climates, its temperature fluctuated in approximately the same annual amplitude range for all points in their domain. Compared to their model, ours, therefore, had to acclimate different scales in SMB values over the Peninsula. For this, we used a normalized RMSE loss, but our model still better emulates regions with high seasonal change, hinting that NRMSE might not be enough to account for different scales in target values. 
