@@ -27,12 +27,15 @@
 \usepackage{siunitx}
 \usepackage{algpseudocode}
 \usepackage{algorithm}
+\usepackage{parskip}
+
 
 
 \usepackage{hyperref}
 \usepackage{graphicx}
 
-\title{Regional Climate Model Emulator based on Deep Learning: SMB predictions over Antarctica}
+
+\title{Regional Climate Model Emulator based on Deep Learning: \\ local-scale surface mass balance predictions over the  Antarctic Peninsula}
 \author{Marijn van der Meer}
 \supervisor{Sophie de Roda Husman}
 \adviser{Prof. Dr. sc. EPFL Martin Jäggi}
@@ -42,7 +45,29 @@
 
 \begin{document}
 \maketitle
+\begin{comment}
+\dedication{
+\begin{raggedleft}
+    Nevertheless, she persisted.\\
+    --- \\
+\end{raggedleft}
+\vspace{4cm}
+\begin{center}
+    This thesis is dedicated to my grandma Brigitte Dorigo Baumann, my biggest supporter.
+\textit{Diese Arbeit ist meiner Grossmutter Brigitte Dorigo Baumann gewidmet, meiner grössten Unterstützerin. Danke liebes Grosi, für all deine Unterstüzung, ich hab dich sehr lieb.}
+\end{center}}
+\end{comment}
+
 \makededication
+
+\acknowledgments{I would like to express my deep gratitude to Prof. Stef Lhermitte and Prof. Martin Jäggi, my research supervisors, for their patient guidance, enthusiastic encouragement, and valuable critiques of this research work. I would also like to thank Sophie de Roda Husman for her helpful advice and assistance on my thesis.
+
+I would like to express my special thanks to Christoph Kittel for providing me with the MAR(ACCESS1.3) RCM dataset and his availability to answer my questions. Likewise, I would like to thank Doury et al.'s team for providing me with the code of their RCM-Emulator. 
+
+I would like to thank my proof-readers in order of occurrence but not of importance: Melissa Corboz [a completer]. 
+
+Finally, I would like to thank Prof. Payer from the EPFL for creating the practical latex package used to write this EPFL thesis. The latest version of this package is available \hyperref{http://www.latex-project.org/lppl.txt}{here}.}
+
 \makeacks
 
 \begin{abstract}
@@ -54,12 +79,29 @@ Your abstract should cover at least the following topics, 1-2 sentences for
 each: what area you are in, the problem you focus on, why existing work is
 insufficient, what the high-level intuition of your work is, maybe a neat
 design or implementation decision, and key results of your evaluation.
+
+Surface mass balance is a crucial indicator variable of the stability and evolution of ice shelves and it is therefore imperative to have precise estimation of it.  
+
+
 \end{abstract}
 
+\begin{plainlanguage}
+In this project, we wanted to find a way to imitate a series of high-resolution images of surface mass balance (SMB) over the Antarctic Peninsula. Those SMB images are crucial to monitoring the evolution of glaciers and ice sheets on the Peninsula. Still, they are costly and time-consuming to create because it needs to be done on a very powerful computer. Therefore, we were interested in building a surrogate program that could recreate those images almost perfectly and, more importantly, faster. 
+
+For this, we used a machine-learning algorithm i.e., a computer program that recognizes patterns in data, to learn the relationship between a group of low-resolution images of climate variables and the high-resolution image of SMB. The low-resolution images were a bundle of atmospheric variables influencing SMB, such as precipitation, temperature, surface pressure, etc. They come from simulations made by climate scientists and are cheap and fast to obtain. 
+
+By learning the relationship between low and high resolution inputs, our machine-learning model is able to recreate images of SMB almost perfectly identical to the truth. The model's only struggle is to predict the right SMB values for points in a very dry climate (where the SMB is small), because it gets distracted by other points that have a bigger change in SMB and wants to focus on those. 
+
+
+
+\end{plainlanguage}
+
+\begin{comment}
 \begin{frenchabstract}
 For a doctoral thesis, you have to provide a French translation of the
 English abstract. For other projects this is optional.
 \end{frenchabstract}
+\end{comment}
 
 \maketoc
 
@@ -74,7 +116,7 @@ English abstract. For other projects this is optional.
     \item Par 2: introduce the main challenge that you see
     \item Par 3: lists why related work is insufficient
     \item Par 4-5: discuss your approach and why it is needed
-    \item Par 6: introduce your thesis statement
+    \item (Par 6: introduce your thesis statement)
     \item Par 7: highlight some of your results
     \item Par 8: discusses your core contribution
 \end{itemize}
@@ -82,40 +124,85 @@ English abstract. For other projects this is optional.
  
 \begin{itemize}
     
-    \item \textbf{Paragraph 0} - Short summary of project: This thesis aimed to develop a machine learning framework that learns the downscaling function of regional climate models. Specifically, we wanted to emulate i.e., imitate, regional surface mass balance values of the Antarctic ice sheet on the Antarctic Peninsula. We wanted to create a machine learning model that inputs low-resolution climate variables and outputs a high-resolution surface mass balance map. Note here that by low-resolution, we mean coarse images; with high resolution, we mean fine images. We got inspired for our framework by a paper by a Meteo France group that used machine learning to emulate regional near-surface temperature over western Europe~\cite{Doury}.
-    \item \textbf{Paragraph 1}-Discuss the setting: Antarctic ice sheet and SMB. Why is it important?
+    \item \textbf{Paragraph 0} - Short summary of project: This thesis aimed to develop a machine learning framework that learns to create regional high-resolution surface mass balance predictions from large-scale low-resolution data (i.e., downscaling). Specifically, we wanted to emulate i.e., imitate, regional surface mass balance values of the Antarctic ice sheet on the Antarctic Peninsula. We wanted to create a machine learning model that has low-resolution atmospheric variables as an input, and produces a high-resolution surface mass balance map. Note here that by low-resolution, we mean large-scale coarse images; by high resolution, we mean local-scale fine images. This framework was inspired by a paper by Doury et al. who used machine learning to emulate regional near-surface temperature over western Europe~\cite{Doury}.
+    \item \textbf{Paragraph 1}-Discuss the setting, Antarctic ice sheet and SMB. Why is SMB important?
     \begin{itemize}
-        \item AIS: The Antarctic ice sheet (AIS) is the largest class of glaciers and contains the majority of ice on Earth, with a volume of 30 million cubic kilometers~\cite{Icesheetsquick}. It extends over 14 million square kilometers, roughly the combined area of the US and Mexico~\cite{AntarcticIceSheet}. This amount of ice constantly changes through melting processes and with the addition of new mass from snow and ice.
-        \item SMB: A primary variable used to observe the AIS is surface mass balance (SMB). SMB is the net balance between inputs and outputs of mass (of ice and snow) on top of the ice sheet~\cite{Lenaerts2019}. It is influenced by the addition of mass through precipitation and snow‐transporting winds and ablation via erosion, sublimation, and run-off~\cite{Kittel}. At any point, an SMB close to zero indicates an arid climate with little change in the ice mass, while a positive SMB means that there was a lot of addition of mass, through precipitation, for example. On the other hand, a negative SMB means that a glacier is losing mass. In the case of ice sheets and grounded glaciers, this mass loss directly affects sea-level rise~\cite{icesheet}. 
+        \item AIS: The Antarctic ice sheet (AIS) is the largest class of glaciers and contains the majority of ice on Earth, with a volume of 30 million cubic kilometers~\cite{Icesheetsquick}. It extends over 14 million square kilometers, roughly the combined areas of the US and Mexico~\cite{AntarcticIceSheet}. This amount of ice constantly changes through melting processes and the addition of new mass from snow and ice.
+        \item SMB: A primary variable used to observe the AIS is surface mass balance (SMB). SMB is the net balance between inputs and outputs of mass i.e., ice and snow, on top of the ice sheet~\cite{Lenaerts2019} (\autoref{fig:example-smb-and-processes}). It is influenced by the addition of mass through precipitation and snow‐transporting winds and ablation via erosion, sublimation, and run-off~\cite{Kittel}. At any point, SMB close to zero indicates an arid climate with little change in the ice mass, while a positive SMB means that mas was added, through precipitation, for example. Inversely, a negative SMB indicates that a glacier is losing mass through melting or calving\footnote{Calving is the process of chunks of ice breaking off from the edge of a glacier~\cite{Marshak}}. In the case of ice sheets and grounded glaciers, this water flows into the oceans and directly affects sea-level rise~\cite{icesheet}. 
         
-        If Antarctica's ice sheet were to melt suddenly, sea levels would rise to approximately $60$\si{m}~\cite{Kittel, Fretwell, Morlighem}, making the AIS the most significant potential contributor to sea-level rise. Unfortunately, the AIS has been steadily losing mass since 2002~\cite{Shepherd, Mottram}, mainly because of calving\footnote{Calving is the process of chunks of ice breaking off from the edge of a glacier~\cite{Marshak}} and melting at the water-ice interface underneath ice shelves (submarine melting)~\cite{Kittel, Mottram, Rignot}. Because the SMB is a good indicator of stability and evolution of ice shelves, it is therefore imperative to have a precise estimation of the SMB of the AIS~\cite{icesheet}.
-    \end{itemize}
-    \item \textbf{Paragraph 2} - Can introduce the main challenge that you see: modelling SMB is very difficult. Done mainly with climate simulations but computationally expensive. 
-    \begin{itemize}
-        \item Though SMB can be monitored with on-site tools, the vastness and climate of Antarctica make this challenging. Therefore, a more reasonable alternative is using the predictions of climate models based on remote sensing data~\cite{Mottram, Lenaerts2019}.  
-        \item To understand and predict the behavior of different climate phenomena, climatologists have come up with complex climate models, which are simulations of climate variables over time and space in different parts of the world. However, at our current technological level, the complexity of these climate models is a compromise between computational costs, resolution of pixels, and the width of the domain that is covered~\cite{Doury}. 
-        \item Depending on the spatial resolution, we usually define two types of climate models: global (GCM) and regional (RCM). GCMs are simulations that cover the whole planet. They are relatively cheap in terms of computational costs because their range is so wide while their resolution is low ($50$-$300$\si{km})~\cite{Doury}. However, for a fine-scale representation of SMB on the AIS, such as its edges or peripheral ice, the resolution of a GCM is too low~\cite{Kittel, Seroussi}. In addition, GCMs do not correctly incorporate critical polar physical processes, such as snow melt, albedo feedback, etc~\cite{Kittel, Lenaerts2016}. 
-        
-        On the other hand, Regional climate models (RCM) are a dynamic downscaling of GCMs, meaning that they are directly created from a specific GCM. They have a higher resolution ($1$-$50$\si{km}) but a smaller domain size. Polar-oriented RCMs such as the Modèle Atmosphérique Régional (MAR) tackle the problem of low spatial resolution of GCMs over the AIS and give a significantly more robust evaluation of mass and energy fluxes changes at the AIS surface~\cite{Kittel, Fyke2018}. Unfortunately, due to the RCMs' higher spatial resolution, they come at a high computational cost (several weeks on supercomputers)~\cite{Doury}. To save on computational costs and time, we were interested in seeing if it is possible to emulate SMB predictions over the AIS from a polar-oriented RCM simulation using a machine learning framework. 
-    \end{itemize}
-    \item \textbf{Paragraph 3} - lists why related work is insufficient: emulator done for temperature but not for SMB over Antarctica
-    \begin{itemize}
-        \item Doury: To our knowledge, there is no machine learning model that emulates regional-scale SMB over Antarctica yet. Therefore, our project is an extension of a machine learning emulator proposed by Doury et al. in~\cite{Doury}. The authors emulated near-surface temperature (TAS) from a high-resolution RCM (CNRM-ALADIN63) over Southwestern Europe using a traditional U-Net. The U-Net is a fully convolutional CNN architecture developed explicitly for biomedical image segmentation~\cite{Ronneberger2015}. It shows high performance in classification and segmentation tasks where the network is trained to predict a class for each pixel. But U-Net models are also used for image processing tasks, such as super-resolution, because they are excellent at gathering pixels belonging to the same object~\cite{Doury}. Moreover, they are particularly effective in cases where the output and inputs are of similar size. Overall, according to Doury et al., this makes them very interesting to use on atmospheric images since the RCM emulator ought to recognize distinct meteorological entities present in the low-resolution inputs of the model to create the corresponding high-resolution image~\cite{Doury}. 
-   
-        They proposed a specific setting called the perfect model framework for training their model. Instead of giving their model low-resolution inputs from their GCM during training, both the low-resolution and high-resolution features came from their RCM. The main reason behind this was that the model aimed to learn the downscaling function of an RCM and that it needed perfect spatial and temporal consistency between the coarse inputs and fine-scaled maps it recreates. However, this cannot be guaranteed between global and regional climate models because of biases and temporal and geographical inconsistencies~\cite{Doury, Sanchez2009, Sanchez2018}. 
-        
-       Their model was a substantial computational gain regarding computing an RCM, with two hours of training on a GPU and predictions under seconds. Furthermore, their emulator evaluated in the perfect model framework, i.e., with coarse inputs from an upscaled RCM, could almost perfectly reproduce the original TAS series. However, though their emulator remains robust when getting GCM inputs, its performance is poorer because of RCM-GCM large-scale decorrelation issues. Furthermore, because the authors did not train it on GCM features, it could not reproduce large-scale inconsistencies between GCMs and RCMs. Because of this, Doury et al. raise the question of the final role of their RCM-emulator since it misses those inconsistencies~\cite{Doury}. 
+        If Antarctica's ice sheet were to melt suddenly, sea levels would rise by approximately $60$\si{m}~\cite{Kittel, Fretwell, Morlighem}, making the AIS the most significant potential contributor to sea-level rise. Indeed, the AIS has been steadily losing mass since 2002~\cite{Shepherd, Mottram}, mainly because of calving and melting at the water-ice interface underneath ice shelves i.e., by submarine melting~\cite{Kittel, Mottram, Rignot}. SMB is a good indicator of stability and evolution of ice shelves, it is therefore imperative to have a precise estimation of the SMB of the AIS~\cite{icesheet}. Currently, however, it is challenging to model SMB correctly.  
     \end{itemize}
     
-    \item \textbf{Paragraph 4} - discuss your approach and why it is needed: emulator from doury extended to smb
+    %% SMB figure:
+    \begin{figure}[tbp]
+        \centering
+        \begin{subfigure}[b]{0.45\columnwidth}  
+            \centering 
+            \includegraphics[width=\textwidth]{doc/Thesis-latex/images/processes_smb.pdf}
+            \caption[]%
+            {{\small }} \label{fig:smb-processes}
+        \end{subfigure}
+        \hfill
+        \begin{subfigure}[b]{0.45\columnwidth}
+            \centering \includegraphics[width=\textwidth]{doc/Thesis-latex/images/smb-example.pdf}
+            \caption[]%
+            {{\small }}    
+          \label{fig:example-smb}
+        \end{subfigure}
+        \caption[]
+        {\small (a): Illustration of processes influencing the surface mass balance (SMB) on the Antarctic ice sheet. (b) Example of surface mass balance values for a random month (06/1980) over Antarctica at regional climate model resolution.
+        } 
+        \label{fig:example-smb-and-processes}
+    \end{figure}
+    
+    
+    \item \textbf{Paragraph 2} - Introduce the main challenges that we see: modeling SMB is very difficult. Done mainly with climate simulations but computationally expensive. 
     \begin{itemize}
-        \item We face several challenges when extending the model from~\cite{Doury} from emulating TAS over Western Europe to SMB over Antarctica. The first problem is that SMB is known to be complex to model because, compared to temperature, it varies highly across multiple scales of space and time. Moreover, as stated by Lenaerts et al. in~\cite{Lenaerts2019}, SMB is impacted by complex interactivity between the atmosphere and the ice sheet surface, large-scale atmosphere circulations, and ice sheet topography. To address the difficulty of modeling SMB, we equip the traditional U-Net used to emulate TAS with attention mechanisms and a normalised RMSE loss designed to handle different ranges in SMB values across our domain. 
+        \item Though SMB can be monitored with on-site tools, the vastness and climate of Antarctica make this challenging. Therefore, a more reasonable alternative is to extrapolate SMB from climate models predictions based on remote sensing data~\cite{Mottram, Lenaerts2019}.  
+        \item To understand and predict the behavior of different climate phenomena, climatologists have developed complex climate models, which are simulations of climate variables over time and space in different parts of the world. However, at our current technological level, the complexity of these climate models is a compromise between computational costs, resolution of pixels, and the width of the domain that is covered~\cite{Doury}. 
+        \item Depending on the spatial resolution, two types of climate models are typically defined: global (GCM) and regional (RCM). GCMs are simulations that cover the whole planet. They are relatively cheap in terms of computational costs because their range is wide while their resolution is low ($50$-$300$\si{km})~\cite{Doury}. Unfortunately, for a fine-scale representation of the AIS, such as its edges or peripheral ice, the resolution of a GCM is too low~\cite{Kittel, Seroussi}. In addition, GCMs do not correctly incorporate critical polar physical processes, such as snow melt, albedo feedback, etc~\cite{Kittel, Lenaerts2016}. 
         
-        Using attention in a neural network helps the network to focus on specific parts of the input~\cite{Sanghyun2018} and we were inspired by the SmaAt-UNet proposed by Trebing et al.~\cite{smatunet}. The SmaAt-UNet was used for precipitation nowcasting\footnote{Nowcasting is the prediction of the present, the very near future, and the very recent past state of an weather indicator~\cite{Nowcasting}} and added attention mechanisms in the Encoder of the U-Net and depthwise-separable convolutions (DSC) instead of traditional convolutions, thus reducing the number of parameters of the model. Incorporating both modifications was found by Trebing et al. to improve the model's prediction for some weather patterns. Otherwise, it performed similarly to significantly bigger architectures. 
+        On the other hand, Regional climate models (RCM) are a dynamic downscaling of GCMs, and they are directly created from a GCM. They have a higher resolution ($1$-$50$\si{km}) but a smaller domain size (i.e., geographical region covered). Polar-oriented RCMs such as the Modèle Atmosphérique Régional (MAR) tackle the problem of low spatial resolution of GCMs over the AIS and give a significantly more robust evaluation of mass and energy fluxes changes at the AIS surface~\cite{Kittel, Fyke2018}. Unfortunately, due to the RCMs' higher spatial resolution, they come at a high computational cost and time (several weeks on supercomputers)~\cite{Doury}. To save time and expenses, we were interested in investigating if it was possible to emulate SMB predictions over the AIS from a polar-oriented RCM simulation using a machine learning framework. 
     \end{itemize}
-    \item sixth paragraph will introduce your thesis statement. Think how you can distill the essence of your thesis into a single sentence.
-    \item The seventh paragraph will highlight some of your results
-    \item The eights paragraph discusses your core contribution.
+    \item \textbf{Paragraph 3} - Lists why related work is insufficient: RCM-emulators still new; done for temperature over Europe but not for SMB over Antarctica
+    \begin{itemize}
+        \item Doury: To our knowledge, no machine learning model emulates regional-scale SMB over Antarctica yet. Using machine learning emulators as surrogate models to substitute computationally expensive and complex RCMs is still a new and recent approach. Our project is an extension of a novel temperature emulator proposed by Doury et al.~\cite{Doury}. The authors emulated the near-surface temperature (TAS) of a high-resolution RCM (CNRM-ALADIN63) over Southwestern Europe using a traditional U-Net. 
+        
+        The U-Net is a fully convolutional CNN architecture developed for biomedical image segmentation by Ronneberger et al.~\cite{Ronneberger2015}. It shows high performance in classification and segmentation tasks where the network is trained to predict a class for each pixel. U-Net models are also used for image processing tasks, such as super-resolution because they are excellent at gathering pixels belonging to the same object~\cite{Doury, howard2018fastai}. Moreover, they are particularly effective in cases where the output and inputs are of similar size. All of this makes them highly relevant to use on images of atmospheric variables, according to Doury et al., since the RCM-emulator ought to recognize distinct meteorological entities present in the low-resolution inputs to create the corresponding high-resolution target~\cite{Doury}. 
+   
+        To train their model, Doury et al. proposed a perfect model framework. Instead of giving their model low-resolution inputs from their GCM during training, both the low- and high-resolution features came from their RCM. The main reason behind this was that they wanted their model to learn the downscaling function of the RCM. For this, their RCM-emulator needed perfect spatial and temporal consistency between the coarse inputs and fine-scaled maps it recreated. This alignment cannot be guaranteed between global and regional climate models because of biases and temporal and geographical inconsistencies, and thus they implemented the perfect model framework~\cite{Doury, Sanchez2009, Sanchez2018}. 
+        
+       Their results show that their emulator provided a substantial computational gain in computing an RCM, with two hours of training on a GPU and predictions within seconds. Furthermore, when evaluated in the perfect model framework i.e., with large-scale inputs from an upscaled RCM, their emulator could almost perfectly reproduce the original TAS series. The emulator remained robust even when getting GCM inputs, but its performance was poorer because of RCM-GCM large-scale decorrelation issues. Because the authors did not train it on GCM features, the model could not reproduce large-scale inconsistencies between GCMs and RCMs. Doury et al. thus questioned the usability of their RCM-emulator since it missed those inconsistencies~\cite{Doury}. 
+    \end{itemize}
+    
+    \item \textbf{Paragraph 4 and 5} - discuss our approach and why it is needed: Emulator from Doury extended to SMB. Because "easier" on temperature, need to change it for SMB. It also needs to be faster than RCM. So add attention, NRMSE and DSC to speed it up and make it better. 
+    \begin{itemize}
+        \item We faced several challenges when extending their RCM-emulator from emulating TAS over Western Europe to SMB over Antarctica. The first problem was that SMB is known to be complex to model because, compared to temperature, it varies highly across multiple scales of space and time. Moreover, as stated by Lenaerts et al., SMB is impacted by complex interactivity between the atmosphere and the ice sheet surface, large-scale atmosphere circulations, and ice sheet topography~\cite{Lenaerts2019}. To address the difficulty of modeling SMB, we equipped the U-Net used to emulate TAS with attention mechanisms and a normalized RMSE loss designed to handle different ranges in SMB values across our physical domain. 
+        
+        Attention in a neural network helps it focus on specific parts of the input by emphasizing relevant activations during training~\cite{Sanghyun2018, AttentionUNet}. Attention was first added to a U-Net in 2018 by Oktay et al.~\cite{ Oktay2018} for image segmentation, but we were inspired by the SmaAt-UNet proposed by Trebing et al.~\cite{smatunet}. The SmaAt-UNet was designed for a precipitation nowcasting task~\footnote{Nowcasting is the prediction of the present, the very near future, and the very recent past state of a weather indicator~\cite{Nowcasting}.} and implemented attention at the skip connections of the Encoder\footnote{The Encoder is the first half in the U-Net architecture where the inputs are downsampled to be encoded into feature representations at multiple different levels~\cite{Encoder}.} of the U-Net and depthwise-separable convolutions (DSC). Using DSC instead of traditional convolutions reduces the number of parameters of the model and builds a smaller and more efficient network. This was particularly interesting for our RCM-emulator as we wanted to gain computational time compared to an RCM. 
+        
+        The traditional U-Net uses skip connections to combine features going via the Decoder\footnote{The Decoder is the second half of the U-Net architecture where features learned by the Encoder are concatenated with features going through the upsampling path~\cite{Encoder}.} of the model with spatial information from the Encoder. Yet, because feature representation in the first layers of the Encoder can be lacking, this can add redundant low-level feature extractions in the upsampling path. Therefore, adding attention to the skip connections suppresses activations in irrelevant regions and decreases the number of redundant features~\cite{AttentionUNet}.
+        Incorporating both attention and DSC was found by Trebing et al. to improve their model's prediction for some weather patterns. Otherwise, it performed similarly to significantly bigger and computationally more expensive architectures. 
+
+    \end{itemize}
+    
+    \begin{comment}
+    \item \textbf{Paragraph 6} - sixth paragraph will introduce your thesis statement. Think how you can distill the essence of your thesis into a single sentence. \end{comment}
+
+
+    \item \textbf{Paragraph 7} - highlight some of our results
+    \begin{itemize}
+        \item To evaluate the need for training the RCM-emulator in a perfect model framework, as proposed by Doury et al., we trained two Emulators; the first was trained on upscaled RCM data and the second on large-scale GCM features directly. Just like in~\cite{Doury}, we found that if the Emulator is trained in the perfect model framework but fed low-resolution GCM features, it cannot reproduce large-scale GCM-RCM inconsistencies and underestimates the target SMB values. However, we found that the second Emulator, trained directly on GCM data, can emulate the true SMB values as successfully as in the perfect model framework, except for very arid regions. This hints that the perfect model framework might not be needed to train an RCM-emulator and that the model might be able to reproduce local-scale SMB maps despite GCM-RCM inconsistencies. Furthermore, the Emulator is a significant computational gain compared to an RCM simulation, with training under ten minutes and predictions in a few seconds. 
+    \end{itemize}
+    \item \textbf{Paragraph 8} - list our core contributions. 
+    
+    
+    The core contributions of this thesis are the following: 
+    \begin{itemize}
+        \item It is possible to extend an RCM-emulator built for emulating local-scale temperature over Europe to reproducing SMB values over Antarctica.
+        \item The predictions from our local-scale SMB emulator are computationally faster than performing an RCM simulation. 
+        \item Our local-scale SMB emulator can be trained directly on low-resolution inputs from a GCM and is able to learn underlying large-scale inconsistencies and biases.
+    \end{itemize}
 
 \end{itemize}
 
@@ -143,7 +230,7 @@ where $X$ are low-resolution variables from a global climate simulation over an 
 \section{Data}\label{sec:data}
 \subsection{Climate model}
 \begin{itemize}
-   \item RCM: RCM variable emulated by $\hat{F}$ is the daily surface mass balance (SMB) values from MAR(ACCESS1.3), a regional downscaling of the global climate model ACCESS 1.3 (CMIP5~\cite{ACCESS13, CMIP5}) by the Modèle Atmosphérique Régional (MAR). 
+   \item RCM: RCM variable emulated by $\hat{F}$ is the daily SMB values from MAR(ACCESS1.3), a regional downscaling of the global climate model ACCESS 1.3 (CMIP5~\cite{ACCESS13, CMIP5}) by MAR. 
     \item MAR is known for accurately modeling physical processes in polar regions such as surface mass balance, air-snow interactions, and atmospheric circulation over ice sheets~\cite{MAR}. 
     \item Why: According to studies comparing climate models conducted in~\cite{Kittel, Agosta2015}, ACCESS 1.3 and MAR(ACCESS 1.3) were the models that most accurately represented the present Antarctic climate in comparison to ERA-Interim. For this reason, we chose MAR(ACCESS 1.3) and its corresponding global climate model as climate simulations for our Emulator.  
     \item Time-frame: historical values from 1980-2006 and future climate simulation RCP 8.5~\cite{Moss2010} from 2006-2100. 
@@ -169,7 +256,7 @@ where $X$ are low-resolution variables from a global climate simulation over an 
         \item It covers approximately 5 million square kilometers and is mainly covered by ice. Major ice shelves include the Larsen and Ronne ice shelves.
         \item It is very mountainous, with its highest peaks rising to about $3'000$ \si{m}
         \item Temperature: the Peninsula has the mildest climates on this continent. Its temperatures are warmest in January, averaging $2$ $\degree C$, and coldest in June, averaging from $-15$ to $-20$ $\degree C$~\cite{AntarcticPeninsula}
-        \item Precipitation: Precipitation varies significantly within the Antarctic Peninsula. The peninsula's tip has the highest precipitation levels, with $35-50$ \si{cm} per year. On the west coast and northeast coast, occasional rain leaves precipitation at $35$ \si{cm}. Along the east coast and the interior of Antarctica, the climate is drier, with precipitation that ranges from $10-15$ \si{cm}~\cite{antarctic-climate, antarctic-climate-2}
+        \item Precipitation: Precipitation varies significantly within the Antarctic Peninsula. The Peninsula's tip has the highest precipitation levels, with $35-50$ \si{cm} per year. On the west coast and northeast coast, occasional rain leaves precipitation at $35$ \si{cm}. Along the east coast and the interior of Antarctica, the climate is drier, with precipitation that ranges from $10-15$ \si{cm}~\cite{antarctic-climate, antarctic-climate-2}
     \end{itemize} 
     \item Why this target region: 
     \begin{itemize}
@@ -198,7 +285,7 @@ where $X$ are low-resolution variables from a global climate simulation over an 
     \end{itemize}
 \item Temporal encoding Z: \begin{itemize}
     \item 
-The one-dimensional variable $Z$ includes the time-series of spatial means $\bar{X}_{t,x}$ and standard deviations $\sigma(X_{t,x})$ for each atmospheric variable $x\in C_1$ and time step $t\in T$.
+The one-dimensional variable $Z$ includes the time series of spatial means $\bar{X}_{t,x}$ and standard deviations $\sigma(X_{t,x})$ for each atmospheric variable $x\in C_1$ and time step $t\in T$.
 
 \item It also includes a cosine, sine vector to encode the information about the month of the year.
     \begin{equation*}
@@ -241,7 +328,7 @@ where $\bar{Z}_{\mathrm{ref},z}$ and $\sigma(Z_{\mathrm{ref},z})$ are respective
     \item Architecture: 
     \begin{itemize}
     \item The network is U-shaped as it is divided into a down-sampling/encoder section that forms the left side and an up-sampling/decoder on the right.
-    \item Encoder: the Encoder consists of double convolution (blue arrows) followed by max-pooling (red arrows). This process halves the image size and doubles the number of channels. Instead of the traditional U-Net convolutional operations, the Emulator uses depthwise-separable convolutions (DSC), designed to reduce the number of parameters~\cite{smatunet}.
+    \item Encoder: the Encoder consists of double convolution (blue arrows) followed by max-pooling (red arrows). This process halves the image size and doubles the number of channels. Instead of the traditional U-Net convolutional operations, the Emulator uses DSC, designed to reduce the number of parameters~\cite{smatunet}.
     \item Bottom of U-Net: At the bottom of the U-Net, encoded spatial information from $X_t$ and temporal information from $Z_t$ are concatenated. The corresponding 1D input $Z_t$ of $X_t$ first goes through a fully dense neural network to reach the same number of channels as the output of the last layer of the Encoder. Then, it is concatenated with the Encoder output at the bottom of the “U”. This constrains the U-Net to give equal importance to the spatial and temporal inputs before starting the decoding path and generating the high-resolution SMB image~\cite{Doury}. 
     \item Decoder: three parts; a 2D transposed convolution operation (green arrows) to double the image size, a concatenation of the resulting feature maps with the previous Encoder’s attention maps (white blocks) via skip-connections (grey arrows), and lastly a double depthwise-separable to half the number of channels (blue arrows). 
     \item Skip-connections: skip-connections between layers (grey arrows) make it possible to skip large sections if required and create a smoother loss surface. 
@@ -268,7 +355,7 @@ where $\bar{Z}_{\mathrm{ref},z}$ and $\sigma(Z_{\mathrm{ref},z})$ are respective
     \end{itemize}
     \item Consistency: To assess the presence of biases and inconsistencies between UPRCM and GCM features, we used two correlation statistics.  
     \begin{itemize}
-        \item Temporal correlation: for each atmospheric variable $x\in C_1$ and point $p = (i,j)$ in the input domain $\mathcal{D}$, we calculated the Pearson correlation between the GCM and UPRCM time-series:
+        \item Temporal correlation: for each atmospheric variable $x\in C_1$ and point $p = (i,j)$ in the input domain $\mathcal{D}$, we calculated the Pearson correlation between the GCM and UPRCM time series:
         \begin{equation}\label{eq:temporal-corr}
             \rho\left(G_{p}^x,U_{p}^x\right) = \frac{\operatorname{cov}(G_{p}^x,U_{p}^x)}{\sigma(G_{p}^x)\sigma(U_{p}^x)} \;\;\;\; \forall p \in \mathcal{D}, x\in C_1 
         \end{equation}
@@ -289,7 +376,7 @@ where $\bar{Z}_{\mathrm{ref},z}$ and $\sigma(Z_{\mathrm{ref},z})$ are respective
     \item Loss: 
     \begin{itemize}
         \item In~\cite{Doury}, the authors propose to view the problem as regression and use Mean Squared Error (MSE) as a loss function. However, our Emulator performed poorly using an MSE loss and did not seem appropriate to our setting. 
-        \item As aforementioned, the scale of SMB values vary significantly across the target domain. For example, dry inland points have minimal annual variations of SMB, with maximum values reaching under $2$ \si{mmWe/day}, while a point on the west coast can reach low extremes of $-20$ \si{mmWe/day}. In this unbalanced setting, MSE penalizes the ill-fitting of low SMB regions less than points with high values of SMB.  
+        \item As aforementioned, the scale of SMB values varies significantly across the target domain. For example, dry inland points have minimal annual variations of SMB, with maximum values reaching under $2$ \si{mmWe/day}, while a point on the west coast can reach low extremes of $-20$ \si{mmWe/day}. In this unbalanced setting, MSE penalizes the ill-fitting of low SMB regions less than points with high values of SMB.  
         \item For this reason, we needed the points to be brought on the same scale when applying a loss function, so we chose to use a normalized RMSE (NRMSE) loss. Normalizing the RMSE facilitates comparing datasets with different scales, as in our case. 
         \item Equation: For each observation i.e., each time step $t$, given to the Emulator, we calculate the NRMSE loss between the predicted SMB value $\hat{Y}^{t}$ and the target $Y^{t}$ over all positions $p$ in the target domain $\mathcal{E}$:
         \begin{align}
@@ -298,7 +385,7 @@ where $\bar{Z}_{\mathrm{ref},z}$ and $\sigma(Z_{\mathrm{ref},z})$ are respective
         \end{align}
         where $\hat{y}_{p}^{t}$ is the SMB value predicted at location $p\in \mathcal{E}$ and time $t \in T$, $P$ the number of points in $\mathcal{E}$ and $Y_{\max}$, $Y_{\min}$ are respectively the maximum and minimum value of SMB over $T$ and $\mathcal{E}$.
     \end{itemize}
-    \item Other training parameters: We trained both Emulators using features from 1980-2090, an 80\%-20\% training-validation split, a batch size of 100 and over 50 epochs. We used using early stopping and a learning-rate scheduler that reduced the learning rate on loss plateaus (starting with $\operatorname{LR} = 0.005$). 
+    \item Other training parameters: We trained both Emulators using features from 1980-2090, an 80\%-20\% training-validation split, a batch size of 100 and over 50 epochs. We used early stopping and a learning-rate scheduler that reduced the learning rate on loss plateaus (starting with $\operatorname{LR} = 0.005$). 
 \end{itemize}
 
 \section{Evaluation}\label{sec:evaluation}
@@ -318,7 +405,7 @@ where $\bar{Z}_{\mathrm{ref},z}$ and $\sigma(Z_{\mathrm{ref},z})$ are respective
     \item Evaluation of $\hat{F}_U$: To inspect how the Emulator performs under conditions similar to those of its training, Emulator $\hat{F}_U$ was first evaluated in the perfect model with UPRCM features $\hat{F}_U(\operatorname{UPRCM})$~\cite{Doury}. In a second step, the Emulator is evaluated on GCM inputs $\hat{F}_U(\operatorname{GCM})$. This assesses how the Emulator trained on UPRCM can apply what it learned to GCM features. Furthermore, the performance of $\hat{F}_U(\operatorname{GCM})$ is also a good indicator of the presence of inconsistencies between UPRCM and GCM features. 
     \item Evaluation of $\hat{F}_G$: Because we trained this Emulator on the GCM, we evaluated $\hat{F}_G$ directly on test features from the GCM $\hat{F}_G(\operatorname{GCM})$. 
     \item The two evaluation frameworks are illustrated in Fig.~\ref{fig:evaluation-framework}.
-    \item For each Emulator $\hat{F}_{(\cdot)}$, we assessed single month and average predictions made over the target domain. This way, we could examine which regions of the Peninsula were best reconstructed in their SMB patterns in terms of details, precision and intensity. \item Furthermore, we looked at individual time-series of predicted SMB values for single points in the target region. These points were specifically chosen to evaluate how the models handled different patterns and intensities of SMB.   
+    \item For each Emulator $\hat{F}_{(\cdot)}$, we assessed single month and average predictions made over the target domain. This way, we could examine which regions of the Peninsula were best reconstructed in their SMB patterns in terms of details, precision and intensity. \item Furthermore, we looked at individual time series of predicted SMB values for single points in the target region. These points were specifically chosen to evaluate how the models handled different patterns and intensities of SMB.   
 \end{itemize}
 
 \subsection{Evaluation metrics}\label{subsec:evaluation-metrics} 
@@ -380,38 +467,38 @@ where $\hat{y}_{p}^{t}$ is the predicted SMB value and $y^{t}_{p}$ the true SMB 
     \item Consistency: Start by evaluating consistency between GCM and UPRCM variables. Why? This way we know how much bias between LR and HR variables the Emulators are dealing with and whether a perfect model framework is necessary. Interesting to know for when UPRCM-Emulator gets GCM inputs and interesting for GCM-Emulator. 
         \item Global ML metrics: move on to evaluate models with metrics over whole target domain. Why? Start global and use typical ML metrics to evaluate performance of models.  
         \item Geoplots: Look at actual prediction images made by Emulators. Why? Good visual aid to assess which regions are best emulated. Can look at details and precision of reconstruction.   
-        \item Zoom in on specific points with their time-series and annual SMB values. Why? Look at how the models adapt to different patterns and intensities of SMB. 
+        \item Zoom in on specific points with their time series and annual SMB values. Why? Look at how the models adapt to different patterns and intensities of SMB. 
     \end{itemize} 
 \end{itemize}
 
-\section{Computational efficiency}
+\section{Computational efficiency}\label{sec:computational-efficiency}
 \begin{itemize}
-\item We trained the Emulators in Pytorch 1.11 on Google Colab's GPU (NVIDIA Tesla K80).
-    \item Using early stopping as described in~\ref{subsec:training}, Emulators $\hat{F}_U$ and $\hat{F}_G$ trained for $31$ and $40$ epochs before stopping. Training took approximately $4$ minutes with roughly $6$ seconds per epoch. A GPU is no longer needed once the Emulator is trained, and prediction on test data takes $15$ seconds on a CPU, which is nearly instantaneous. 
-    \item This computational time is significantly smaller than running an RCM simulation as that can take several weeks to calculate on a super-computer~\cite{Doury}. 
-    \item Note that our computational time does not include the preparation of data for the Emulator, but if the data is readily obtainable and a correct data processing pipeline is in place, selecting the target region and creating the UPRCM takes only a few hours on a CPU.   
+\item We trained the Emulators in PyTorch 1.11 on Google Colab's GPU (NVIDIA Tesla K80).
+    \item Using early stopping as described in~\autoref{subsec:training}, Emulators $\hat{F}_U$ and $\hat{F}_G$ trained for 31 and 40 epochs before stopping. Training took approximately 4 minutes with roughly 6 seconds per epoch. A GPU is no longer needed once the model is trained, and prediction on test data takes 15 seconds on a CPU, which is nearly instantaneous. 
+    \item This computational time is significantly smaller than running an RCM simulation which can take several weeks to calculate on a super-computer~\cite{Doury}. 
+    \item Note that our computational time does not include data preparation for the Emulator. But if the data is readily obtainable and a correct data processing pipeline is in place, selecting the target region and creating the UPRCM takes only a few hours on a CPU.   
 \end{itemize}
 
 
 
 \section{Bias between RCM and GCM variables}\label{sec:res-bias-RCM-GCM}
-To assess the bias and inconsistencies between the large-scale and fine-scale atmospheric variables, we calculated the temporal and spatial correlation between UPRCM and GCM features (Eq.~\ref{eq:spatial-corr} and Eq.\ref{eq:temporal-corr}). Results can be seen in Fig.~\ref{fig:corr-GCM-RCM}. 
+To assess the bias and inconsistencies between the large-scale (low-resolution) and fine-scale (high-resolution) atmospheric variables, we calculated the temporal and spatial correlation between UPRCM and GCM features (\autoref{eq:spatial-corr} and~\ref{eq:temporal-corr}). Results are illustrated in~\autoref{fig:corr-GCM-RCM}. 
 \begin{itemize}
-    \item Fig.~\ref{fig:temp-corr-GCM-UPRCM}: 
+    \item \autoref{fig:temp-corr-GCM-UPRCM}: 
     \begin{itemize}
-        \item For most of the atmospheric variables, the time-series of URPCM and GCM features are highly positively correlated, with values very close to $1$. 
-        \item However, the two wind variables (EW, NW) show inconsistencies between large and local scale time-series over the mainland and Peninsula with minimal correlation values reaching $0.2$.
-        \item This suggests that, except for winds, there is almost no inconsistency in the seasonal patterns between regional and global variables. 
+        \item For most of the atmospheric variables, the time series of URPCM and GCM features are highly positively correlated, with values very close to one.
+        \item However, the two wind variables (EW, NW) show inconsistencies between large and local-scale time series over the mainland and Peninsula with minimal correlation values reaching 0.2.
+        \item This suggests that, except for the winds, there is almost no inconsistency in the seasonal patterns between regional high-resolution and global low-resolution variables. 
     \end{itemize}
-    \item Fig.~\ref{fig:spatial-corr-GCM-UPRCM} and Fig.~\ref{fig:spatial-corr-GCM-RCM-ex}: 
+    \item \autoref{fig:spatial-corr-GCM-UPRCM} and~\ref{fig:spatial-corr-GCM-RCM-ex}: 
     \begin{itemize}
-        \item As seen in Fig.~\ref{fig:spatial-corr-GCM-UPRCM}, variables like temperature, specific humidity, radiation, and precipitation show significant changes in spatial correlation between UPRCM and GCM features.
-        \item The most flagrant variables are SWD, with an annual pattern strongly oscillating between approximate spatial correlation values of $0.2$ and $0.8$, and precipitation with a very poor correlation.
-        \item Looking at some individual examples in Fig.~\ref{fig:spatial-corr-GCM-RCM-ex}, we see that the spatial correlation is low for SWD radiation during winter because the GCM predicts higher radiation values in the mainland than RCM. However, because there is very little radiation, spatial correlation is high in summer. 
-        \item For precipitation, the patterns in the UPRCM and GCM are very different, with the RCM being much more precise in its predictions. For example, for November, the UPRCM shows a local high-intensity precipitation region on the tip of the Peninsula, while the GCM predicts a more imprecise pattern of lower intensity. 
-        \item We also notice a streak pattern on the left boundary of the RCM, but this is a known problem as the boundaries of climate models are usually imprecise. 
+        \item As seen in \autoref{fig:spatial-corr-GCM-UPRCM}, atmospheric variables like temperature, specific humidity, radiation, and precipitation show significant changes in spatial correlation between UPRCM and GCM features.
+        \item The most flagrant variables are short-wave downward radiation (SWD) and precipitation (PR). SWD has an annual spatial correlation pattern strongly oscillating between approximately 0.2 in winter and 0.8 in summer. PR has very poor spatial correlation over the whole test period, with a maximum of 0.4.
+        \item Looking at some individual months of variables in \autoref{fig:spatial-corr-GCM-RCM-ex}, we see that the spatial correlation is low between UPRCM and GCM predictions for SWD during winter because the GCM predicts higher radiation values in the mainland than RCM. However, because there is very little radiation in summer months, spatial correlation is high. 
+        \item For precipitation, the spatial patterns in the UPRCM and GCM are very different, with the RCM being much more precise in its predictions. For example, for the month of November in 2093, the UPRCM shows a local high-intensity precipitation event on the tip of the Peninsula, while the GCM predicts a more vague pattern of lower intensity over the water in the west. 
+        \item We also notice a streak pattern on the left boundary of the RCM for all variables, but this is a known problem as the boundaries of climate models are usually imprecise. 
     \end{itemize}
-    \item Overall, we found problems in consistency between large and local-scale variables. As mentioned in~\ref{subsec:perfect-model}, these biases might confuse an Emulator, and this might justify the usage of the perfect model framework for training a model. 
+    \item Overall, we found problems in consistency between large and local-scale variables. As mentioned in \autoref{subsec:perfect-model}, these inconsistencies might confuse an Emulator, and this might justify the need for the perfect model framework for training a model. 
 \end{itemize}
 
 
@@ -420,14 +507,14 @@ To assess the bias and inconsistencies between the large-scale and fine-scale at
         \begin{subfigure}[b]{\columnwidth}
             \centering \includegraphics[width=\textwidth]{doc/Thesis-latex/images/results/temporalCorr_RCM_GCM.pdf}
             \caption[]%
-            {{\small Temporal correlation over test period}}    
+            {{\small Temporal correlation}}    
           \label{fig:temp-corr-GCM-UPRCM}
         \end{subfigure}
         \hfill
             \begin{subfigure}[b]{\columnwidth}
             \centering \includegraphics[width=\textwidth]{doc/Thesis-latex/images/results/spatialCorr_TS_RCM_GCM.pdf}
             \caption[]%
-            {{\small Spatial correlation over test period}}    
+            {{\small Spatial correlation}}    
           \label{fig:spatial-corr-GCM-UPRCM}
         \end{subfigure}
         \hfill
@@ -435,11 +522,11 @@ To assess the bias and inconsistencies between the large-scale and fine-scale at
             \centering 
             \includegraphics[width=\textwidth]{doc/Thesis-latex/images/results/spatialCorr_RCM_GCM.pdf}
             \caption[]%
-            {{\small Spatial correlation for individual variables and months}} \label{fig:spatial-corr-GCM-RCM-ex}
+            {{\small Spatial patterns for example months and variables}} \label{fig:spatial-corr-GCM-RCM-ex}
         \end{subfigure}
         \hfill
         \caption[]
-        {\small Temporal (a) and spatial (b, c) correlation between UPRCM and GCM variables given as input to Emulator ($\hat{F}$) over target domain ($\mathcal{E})$) and test period (2090-2100). (a) Temporal correlation between UPRCM and GCM time-series for each point $p$ in target domain $\mathcal{E}$. Legend: mean ($\mu$) and standard deviation ($\operatorname{std}$) over $\mathcal{E}$. (b) Spatial correlation between UPRCM and GCM variables over $\mathcal{E}$ for each time step. (c) Example of time steps with lowest (left) and highest (right) spatial correlation ($\operatorname{sc}$) between UPRCM and GCM. Variables from top to bottom: long-wave downward radiation (LWD), short-wave downward radiation (SWD) and precipitation (PR).} 
+        {\small Temporal (a) and spatial (b, c) correlation between UPRCM and GCM variables given as input to Emulator ($\hat{F}$) over target domain ($\mathcal{E})$ and test period (2090-2100). (a) Temporal Pearson correlation between UPRCM and GCM time series for each point $p$ in target domain $\mathcal{E}$. Legend: mean ($\mu$), standard deviation ($\operatorname{std}$) and minimum ($\operatorname{min}$) of correlation over $\mathcal{E}$. (b) Spatial correlation between UPRCM and GCM variables over $\mathcal{E}$ for each time step. (c) Example of months with lowest (left) and highest (right) spatial correlation ($\operatorname{sc}$) between UPRCM and GCM. Chosen time steps illustrated with dots on the time series in (b). Variables from top to bottom: long/short-wave downward and short radiation (LWD/SWD) and precipitation (PR).} 
         \label{fig:corr-GCM-RCM}
     \end{figure}
 
@@ -447,11 +534,11 @@ To assess the bias and inconsistencies between the large-scale and fine-scale at
 
 
 \section{Evaluation metrics}
-To evaluate the overall performance of both Emulators, we used three traditional machine learning metrics as described in~\ref{subsec:evaluation-metrics}. Results can be seen in Fig.~\ref{fig:evaluation-GCM-RCM}. Here we were particularly interested in seeing how the metrics differ for regions with high amplitudes of SMB i.e., regions with high precipitation, such as the tip and west-coast, and dryer regions such as the east-coast and mainland. 
+To evaluate the overall performance of Emulators $\mathrm{\hat{F}_{U}}$ and $\mathrm{\hat{F}_{G}}$, we used three traditional machine learning metrics as described in \autoref{subsec:evaluation-metrics}. Results can be seen in \autoref{fig:evaluation-GCM-RCM}. We were particularly interested in seeing how the evaluation metrics differ for regions with high amplitudes of SMB i.e., regions with high precipitation, such as the tip and west-coast, and dryer regions such as the east-coast and mainland. 
 \begin{itemize}
-    \item Pearson correlation coefficient: As seen in the box-plot, in average, $\hat{F}_{U}(UPRCM)$ and $\hat{F}_{G}(GCM)$ show higher correlation values than $\hat{F}_{G}(GCM)$. This is especially illustrated on the tip and west coast of the peninsula, where $\hat{F}_{U}(UPRCM)$ and $\hat{F}_{G}(GCM)$ show the highest correlation to the truth, with values close to 1. The east coast of the peninsula has the lowest correlations, especially for $\hat{F}_{G}(GCM)$. We suspect this is because the model struggles to emulate temporal SMB patterns of dry regions such as the inland and east peninsula. 
-    \item Wasserstein distance and RMSE: With the highest Wasserstein distance and RMSE values, $\hat{F}_{U}(GCM)$ shows that the density probability functions of the emulated SMB series are farther from the RCM truth when given GCM inputs than UPRCM. For this particular Emulator, the peninsula shows high differences in distributions with outliers with significant scores up to $10$ for Wasserstein distance and $14$ for RMSE. This hints that the Emulator $\hat{F}_{U}(GCM)$  struggles to reach high SMB intensities when given GCM inputs while trained on UPRCM.   
-    \item Overall, we see that according to these metrics, $\hat{F}_{U}(UPRCM)$ and $\hat{F}_{G}(GCM)$ perform very similarly and always perform better than $\hat{F}_{U}(GCM)$. While temporal patterns and seasonality are best reconstructed in regions of high precipitation such as the tip and west-coast of the peninsula, the Emulators struggle to emulate their extreme values, especially $\hat{F}_{U}(GCM)$. 
+    \item Pearson correlation coefficient: As seen in the box-plot, on average, $\mathrm{\hat{F}_{U}(UPRCM)}$ and $\mathrm{\hat{F}_{G}(GCM)}$ show higher correlation values than $\mathrm{\hat{F}_{U}(GCM)}$. This is especially flagrant on the tip and west coast of the Antarctic Peninsula, where $\mathrm{\hat{F}_{U}(UPRCM)}$ and $\mathrm{\hat{F}_{G}(GCM)}$ show the highest correlation to the RCM truth, with values close to one. The east coast of the Peninsula has the lowest correlations, especially for $\mathrm{\hat{F}_{U}(GCM)}$. We suspect this is because the model's predictions underestimate temporal SMB patterns of dry regions such as the inland and east Peninsula. 
+    \item Wasserstein distance and RMSE: With the highest Wasserstein distance and RMSE values, $\mathrm{\hat{F}_{U}(GCM)}$ shows that the density probability functions of the emulated SMB series are farther from the RCM truth. For this particular Emulator, the Peninsula shows high differences in distributions with outliers with significant scores up to 10 for Wasserstein distance and 14 for RMSE. This hints that the Emulator $\mathrm{\hat{F}_{U}(GCM)}$ is not able to predict high SMB intensities when given GCM inputs while trained on UPRCM.   
+    \item Overall, we see that according to these metrics, $\mathrm{\hat{F}_{U}(UPRCM)}$ and $\mathrm{\hat{F}_{G}(GCM)}$ perform very similarly and always perform better than $\mathrm{\hat{F}_{U}(GCM)}$. While temporal patterns and seasonality are best reconstructed in regions of high precipitation such as the tip and west-coast of the Antarctic Peninsula, the Emulators' predictions tend to underestimate extreme values, especially $\mathrm{\hat{F}_{U}(GCM)}$ and in dry regions. 
 \end{itemize}
 
 
@@ -459,38 +546,38 @@ To evaluate the overall performance of both Emulators, we used three traditional
 \begin{figure}[!ht]
   \centering
   \includegraphics[width=\columnwidth]{doc/Thesis-latex/images/results/metrics_RCM_GCM.pdf}
-  \caption []{\small Evaluation of Emulator trained on UPRCM ($\hat{F}$) or on GCM ($\hat{G}$) and using respectively UPRCM ($\operatorname{\hat{F}(UPRCM)}$) and GCM as low-resolution input ($\operatorname{\hat{F}(GCM)}$, $\operatorname{\hat{G}(GCM)}$). Test period (2090-2100). At each position $p$ in target domain $\mathcal{E}$, the truth series over the test period are compared to predicted SMB values $\operatorname{\hat{F}(\cdot)}$ and $\operatorname{\hat{G}(\cdot)}$. Right: box plot of evaluation metric values, extending from lower to upper quartile, with a line at the median and triangle at the mean. From top to bottom: Pearson correlation, Wasserstein distance and RMSE (\ref{subsubsec:rmse}). Legend: spatial mean ($\operatorname{\mu}$) and standard deviation ($\operatorname{std}$) of metric over $\mathcal{E}$. }
+  \caption []{\small Evaluation of Emulators trained on UPRCM ($\mathrm{\hat{F}_{U}}$) or on GCM ($\mathrm{\hat{F}_{G}}$) large-scale inputs. Predictions made using respectively UPRCM ($\mathrm{\hat{F}_{U}(UPRCM)}$) and GCM as low-resolution input ($\mathrm{\hat{F}_{U}(GCM)}$) and ($\mathrm{\hat{F}_{G}(GCM)}$). Evaluation over target domain $\mathcal{E}$ and test period (2090-2100). At each position $p \in\mathcal{E}$, the truth series are compared to predicted SMB values over the test period. Right: box plot of evaluation metrics, from lower to upper quartile, with a line at the median and triangle at the mean. From top to bottom: Pearson correlation, Wasserstein distance and RMSE (\autoref{subsubsec:rmse}). Legend: spatial mean ($\operatorname{\mu}$), standard deviation ($\operatorname{std}$), minimum ($\min$) and maximum ($\max$) of metrics over $\mathcal{E}$.}
   \vspace{-3mm}
   \label{fig:evaluation-GCM-RCM}
 \end{figure}
 
 
 \subsection{Geoplots}
-To evaluate how our models emulate spatial structures, we compare a prediction for a random month and average predictions over the test period to the target RCM. Results can be seen in Fig.~\ref{fig:geoplots-GCM-RCM}. 
+To evaluate how our Emulators can predict spatial structures of SMB, we compare a prediction for a random month and the average predictions over the test period to the RCM truth. Results can be seen in \autoref{fig:geoplots-GCM-RCM}. 
 \begin{itemize}
-    \item Unsurprisingly, in the first two columns in Fig.~\ref{fig:geoplots-GCM-RCM} we see that compared to the low-resolution UPRCM map, the high-resolution RCM truth is more detailed and has a more complex spatial structure. As expected, because of their precipitation patterns, we see that the tip and west coast of the peninsula show strong values in SMB, some points reaching $10$ \si{[mmWe/day]}. 
-    \item For the chosen random month, except for higher intensity regions in the mainland, $\hat{F}_{U}(UPRCM)$ and $\hat{F}_{G}(GCM)$ competently reproduce the spatial structure of the RCM truth. Both have a very small RMSE, which becomes even smaller when looking at the average prediction over the test period ($0.09$ and $0.08$). On average, both models' predictions look similar to the average target RCM. 
-    \item However, $\hat{F}_{U}(GCM)$, both for the random month and on average, is not able to reproduce the extreme values of SMB and creates a toned-down version of the truth. This is reflected in its RMSE, which is twice as high as the other two models ($0.53$ for a random month and $0.23$ on average). 
-    \item Overall, this Figure hints that both Emulators, when evaluated on data similar to what they were trained on, have a solid capacity to reproduce the complex spatial structures of RCM. 
+    \item Unsurprisingly, in the first two columns in \autoref{fig:geoplots-GCM-RCM} we see that compared to the low-resolution UPRCM map, the high-resolution RCM truth is more detailed and has a more complex spatial structure. As expected, because of their precipitation patterns, we see in the RCM truth that the tip and west coast of the Antarctic Peninsula show strong values in SMB, some points reaching 10 \si{mmWe/day}. 
+    \item For the chosen random month, except for higher intensity regions in the mainland, both $\mathrm{\hat{F}_{U}(UPRCM)}$ and $\mathrm{\hat{F}_{G}(GCM)}$ competently reproduce the spatial structure of the RCM truth. On average, both Emulators' predictions also look very similar to the average target RCM. Furthermore, both Emulators have a very small RMSE (0.27 and 0.30), which becomes even smaller when looking at the average prediction over the test period (0.09 and 0.08). 
+    \item However, $\mathrm{\hat{F}_{U}(GCM)}$, both for the random month and on average, is not able to reproduce the extreme values of SMB and creates a toned-down version of the truth. In particular, the high SMB values on the west coast of the Antarctic Peninsula are underestimated. This is reflected in its RMSE, which is twice as high as the other two models (0.53 for a random month and 0.23 on average). 
+    \item Overall, \autoref{fig:geoplots-GCM-RCM} hints that both Emulators $\mathrm{\hat{F}_{U}}$ and $\mathrm{\hat{F}_{G}}$, when evaluated on data similar to what they were trained on, have a solid capacity to reproduce the complex spatial structures of RCM. 
 \end{itemize}
 
 % SMB predictions over geoplots
 \begin{figure}[thb]
   \centering
   \includegraphics[width=\columnwidth]{doc/Thesis-latex/images/results/geoplots_RCM_GCM.pdf}
-  \caption []{\small SMB on a random month (05/1980) (top) and averaged over the test period (bottom) over $\mathcal{E}$. From left to right: SMB as in the UPRCM, true RCM, $\operatorname{\hat{F}(UPRCM)}$ and $\operatorname{\hat{F}(GCM)}$. Legend: spatial mean ($\mu$) over $\mathcal{E}$ and spatial RMSE ($\operatorname{rmse}$) between the emulated and true SMB pixel values.}
+  \caption []{\small SMB predictions on a random month (05/1980) (top) and averaged over the test period (2090-2100) (bottom) over target domain $\mathcal{E}$. Emulators trained on UPRCM ($\mathrm{\hat{F}_{U}}$) or on GCM ($\mathrm{\hat{F}_{G}}$) large-scale inputs. Predictions made using respectively UPRCM ($\mathrm{\hat{F}_{U}(UPRCM)}$) and GCM as low-resolution input ($\mathrm{\hat{F}_{U}(GCM)}$) and ($\mathrm{\hat{F}_{G}(GCM)}$). From left to right: SMB in RCM truth, SMB in UPRCM, $\operatorname{\hat{F}_{U}(UPRCM)}$, $\operatorname{\hat{F}_{U}(GCM)}$ and $\operatorname{\hat{F}_{G}(GCM)}$. Legend: spatial mean ($\mu$) of SMB over $\mathcal{E}$ and spatial RMSE ($\operatorname{rmse}$) between the emulated and RCM truth SMB pixel values.}
   \vspace{-3mm}
   \label{fig:geoplots-GCM-RCM}
 \end{figure}
 
 \subsection{Time-series}\label{sec:res-time-series}
-To assess how the Emulators predict different patterns and intensities of SMB, we plotted the emulated time series for four geographical points (Fig.~\ref{fig:points-location}). First, we chose two points in regions with higher levels of precipitation: P1 on the Larsen C ice-shelf whose SMB values annually oscillate between $-5$ and $5$ \si{[mmWe/day]} and P2 on the west coast, that once per year reaches low extremes of $-15$ \si{[mmWe/day]}. On the other side, P4 on the Ronne ice-shelf has a significantly drier climate ($0-1.5$ \si{[mmWe/day]}). Finally, we chose P3 on the east coast for its drier weather ($0-4$ \si{[mmWe/day]}) and its temporal SMB pattern that looks less seasonal than the other three points. Time series and annual predictions for each point can be seen in Fig.~\ref{fig:timeseries-GCM-UPRCM}. 
+To assess how the Emulators can predict different temporal patterns and intensities of SMB, we plotted the emulated time series for four geographical points (\autoref{fig:points-location}). First, we chose two points in regions with high levels of precipitation: P1 on the Larsen C ice-shelf whose SMB values annually oscillate between -5 and 5 \si{mmWe/day} and P2 on the west coast, which once per year reaches low extremes of -15 \si{mmWe/day}. P4 on the Ronne ice-shelf has a significantly drier climate ($0-1.5$ \si{mmWe/day}). Finally, we chose P3 on the east coast for its drier weather ($0-4$ \si{mmWe/day}) and its annual SMB pattern which looks less seasonal than the other three points. Time series and annual SMB predictions for each point can be seen in \autoref{fig:timeseries-GCM-UPRCM}. 
 \begin{itemize}
-    \item For each of these 4 points, $\hat{F}_{U}(UPRCM)$ and $\hat{F}_{G}(GCM)$ come very close to reproducing the patterns of the RCM truth series. 
-    \item For P1 and P2, all emulators capture the seasonality pattern well, with high correlation values (close to $1$ for P2). $\hat{F}_{G}(GCM)$ looks like it is even a little bit better than $\hat{F}_{U}(UPRCM)$ at emulating low drops and high peaks in SMB. 
-    \item For P3 and P4, even if they miss a few of the peaks, $\hat{F}_{U}(UPRCM)$ and $\hat{F}_{G}(GCM)$ show a good ability for reproducing the time-series pattern, even when their behavior is less cyclical, like for P3. However, for P4, we notice that the Emulators struggle when faced with multiple close peaks per year and merge them into one prominent peak. 
-    \item As was already seen in Fig.~\ref{fig:geoplots-GCM-RCM}, $\hat{F}_{U}(GCM)$ struggles to reproduce high amplitude values, and this is very noticeable in its time series. They capture the seasonal patterns (reflected in a high correlation) but produce a toned-down version of the RCM truth time series (reflected in a higher RMSE).
-    \item This behavior is also reflected in the annual SMB predictions for all models. $\hat{F}_{U}(UPRCM)$ and $\hat{F}_{G}(GCM)$ come very close to the true annual SMB values, with $\hat{F}_{G}(GCM)$ again a little bit better than $\hat{F}_{U}(UPRCM)$ for almost all years. However, $\hat{F}_{U}(GCM)$ on average consistently underestimates the truth by half. 
+    \item For each of these four points, $\mathrm{\hat{F}_{U}(UPRCM)}$ and $\mathrm{\hat{F}_{G}(GCM)}$ come very close to reproducing the temporal patterns of the RCM truth series. 
+    \item For P1 and P2, all Emulators capture the seasonality well, with high correlation values (close to one for P2). $\mathrm{\hat{F}_{G}(GCM)}$ looks like it is even a little bit better than $\mathrm{\hat{F}_{U}(UPRCM)}$ at emulating low drops and high peaks in SMB. 
+    \item For P3 and P4, even if they miss a few of the peaks, $\mathrm{\hat{F}_{U}(UPRCM)}$ and $\mathrm{\hat{F}_{G}(GCM)}$ show a good ability for reproducing the time series pattern, even when their behavior is less seasonal, like in P3. However, for P4, we notice that the Emulators have difficulties reproducing multiple close peaks per year and tend to merge them into one prominent peak. 
+    \item As was already seen in \autoref{fig:geoplots-GCM-RCM}, $\mathrm{\hat{F}_{U}(GCM)}$ tends to underestimate high amplitude values, and this is especially noticeable in its time series for all four points. Its predictions capture the seasonal patterns (reflected in a high correlation) but produce a toned-down version of the RCM truth time series (mirrored in a higher RMSE).
+    \item This behavior is also reproduced in the annual SMB predictions for all Emulators. $\mathrm{\hat{F}_{U}(UPRCM)}$ and $\mathrm{\hat{F}_{G}(GCM)}$ come very close to the true annual SMB values, with $\mathrm{\hat{F}_{G}(GCM)}$ again slightly better than $\mathrm{\hat{F}_{U}(UPRCM)}$ for almost all years. However, $\mathrm{\hat{F}_{U}(GCM)}$ on average consistently underestimates the truth by half. 
 
 \end{itemize}
 
@@ -514,7 +601,8 @@ To assess how the Emulators predict different patterns and intensities of SMB, w
         \end{subfigure}
         \hfill
         \caption[]
-        {\small SMB predictions of Emulators $\operatorname{\hat{F}_{U}(UPRCM)}$ (blue line), $\operatorname{\hat{F}_{U}(GCM)}$ (dotted green) and $\operatorname{\hat{F}_{G}(GCM)}$ (dashed orange) compared to RCM Truth (grey line). (b) Time-series of predictions of Emulator for four different geographical points (a) in target domain $\mathcal{E})$. Legend: temporal correlation ($\operatorname{r}$), temporal RMSE ($\operatorname{RMSE}$) and NRMSE ($\operatorname{NRMSE}$) between the time-series of emulated and true SMB. $U$ = $\operatorname{\hat{F}_{U}(UPRCM)}$, $G$ = $\operatorname{\hat{F}_{U}(GCM)}$ and $Gtr$ = $\operatorname{\hat{F}_{G}(GCM)}$. Test time-frame: 2090-2100. } 
+        {\small SMB predictions of Emulators $\mathrm{\hat{F}_{U}(UPRCM)}$ (blue line), $\mathrm{\hat{F}_{U}(GCM)}$ (dotted green) and $\mathrm{\mathrm{\hat{F}_{G}(GCM)}}$ (dashed orange) compared to RCM Truth (grey line) over test period (2090-2100). Emulators trained on UPRCM ($\mathrm{\hat{F}_{U}}$) or on GCM ($\mathrm{\hat{F}_{G}}$) large-scale inputs. Predictions made using respectively UPRCM ($\mathrm{\hat{F}_{U}(UPRCM)}$) and GCM as low-resolution input ($\mathrm{\hat{F}_{U}(GCM)}$) and ($\mathrm{\hat{F}_{G}(GCM)}$). 
+        (b) Time-series of predictions of Emulators for four different geographical points (a) in target domain $\mathcal{E})$. Legend: temporal correlation ($\operatorname{r}$), temporal RMSE ($\operatorname{RMSE}$) and nromalised RMSE ($\operatorname{NRMSE}$) between the time series of emulated and true SMB. For metrics $U$ = $\mathrm{\hat{F}_{U}(UPRCM)}$, $G$ = $\mathrm{\hat{F}_{U}(GCM)}$ and $Gtr$ = $\mathrm{\hat{F}_{G}(GCM)}$.} 
         \label{fig:points-timeseries-GCM-UPRCM}
     \end{figure}
 
@@ -545,7 +633,7 @@ To have an indicator of which atmospheric variables have the biggest impact on t
         \end{subfigure}
         \hfill
         \caption[]
-        {\small Predictions of Emulator trained on UPRCM ($\hat{F}$) or on GCM ($\hat{G}$) and using respectively UPRCM ($\operatorname{\hat{F}(UPRCM)}$) and GCM as low-resolution input ($\operatorname{\hat{F}(GCM)}$, $\operatorname{\hat{G}(GCM)}$). (b) Time-series of predictions of Emulator for four different geographical points (a) in target domain ($\mathcal{E})$). True SMB (grey), $\operatorname{\hat{F}(UPRCM)}$ (blue), $\operatorname{\hat{F}(GCM)}$ (green) and $\operatorname{\hat{G}(GCM)}$ (orange). Legend: temporal correlation ($\operatorname{r}$) and temporal RMSE ($\operatorname{RMSE}$) between the time-series of emulated and true SMB. Test time-frame: 2090-2100. } 
+        {\small Predictions of Emulator trained on UPRCM ($\hat{F}$) or on GCM ($\hat{G}$) and using respectively UPRCM ($\operatorname{\hat{F}(UPRCM)}$) and GCM as low-resolution input ($\operatorname{\hat{F}(GCM)}$, $\operatorname{\hat{G}(GCM)}$). (b) Time-series of predictions of Emulator for four different geographical points (a) in target domain ($\mathcal{E})$). True SMB (grey), $\operatorname{\hat{F}(UPRCM)}$ (blue), $\operatorname{\hat{F}(GCM)}$ (green) and $\operatorname{\hat{G}(GCM)}$ (orange). Legend: temporal correlation ($\operatorname{r}$) and temporal RMSE ($\operatorname{RMSE}$) between the time series of emulated and true SMB. Test time-frame: 2090-2100. } 
         \label{fig:points-timeseries-GCM-UPRCM}
     \end{figure}
 \end{comment}
@@ -554,48 +642,49 @@ To have an indicator of which atmospheric variables have the biggest impact on t
 %%%%%%%%%%%%%%%%%%%%
 Discussion section flow:
 \begin{itemize}
-    \item Extension of Emulator on temperature to SMB. Why? What is different from emulating near-surface temperature, what are its limitations. Does it work to change it from temperature to SMB? 
-    \item Perfect model framework. Why? Discuss utility of perfect model framework and its extension when trained on GCM. Is tit really useful or can we just train directly on the GCM?  
-    \item Utility of Emulator. Why? Is it really faster and easier to use than computing an RCM? 
+    \item Extension of the temperature emulator from Doury et al. to SMB. What is different for us than emulating near-surface temperature, what are its limitations. Does it work to change it from temperature to SMB? 
+    \item Perfect model framework. Discuss utility of perfect model framework and its extension when trained on GCM. Is it really useful or can we just train directly on the GCM?  
+    \item (Usage of attention: )
+    \item Utility of Emulator. Is it really faster and easier to use than computing an RCM? 
 \end{itemize}
 
-\section{Extending the Emulator of near-surface temperature over France to SMB over Antarctica}\label{sec:extension-doury}
+\section{On extending an emulator of near-surface temperature over France to SMB over Antarctica}\label{sec:extension-doury}
 \begin{itemize}
-    \item In this study, we extended the machine learning model that emulated near-surface temperature over the south of France, proposed in~\cite{Doury}. 
-    \item In doing this, we were faced with several challenges as SMB is notoriously challenging to observe and represent in models compared to temperature~\cite{Lenaerts2019}. 
+    \item In this thesis, we extended the model that emulated near-surface temperature over the south of France, proposed by Doury et al.~\cite{Doury} to emulate SMB over Antarctica. 
+    \item In doing so, we were faced with several challenges because SMB is notoriously challenging to observe and represent compared to temperature~\cite{Lenaerts2019}. 
     \begin{itemize}
-        \item HR variable not in LR input: Because temperature is a variable in the GCM and RCM, it was present in the low-resolution features given as input to the model in~\cite{Doury}. In our case, SMB was only available in the RCM. Thus, our Emulator could exclusively reconstruct a high-resolution SMB image given a limited number of other atmospheric variables. This might explain why some regions in the Antarctic Peninsula, especially those with less seasonal patterns, might be harder for the model to reconstruct. We rely on the assumption that our model has a clear physical relationship to learn between our eight large-scale atmospheric variables and local scale SMB, but this might not be true for all points. 
-        \item Space variations: Ice sheet SMB varies highly across multiple space and time scales, while temperature tends to be a more stable and seasonal variable. For example, as was discussed in~\ref{sec:res-time-series}, on the Antarctic Peninsula, while some regions have high seasonal amplitude changes in SMB, others have almost none. If they do, it is only with very little difference in amplitude. This was not the case for the near-surface temperature emulated in~\cite{Doury}, where, even though their target domain covered different climates, its temperature fluctuated in approximately the same annual amplitude range for all points in their domain. Compared to their model, ours, therefore, had to acclimate different scales in SMB values over the Peninsula. For this, we used a normalized RMSE loss, but our model still better emulates regions with high seasonal change, hinting that NRMSE might not be enough to account for different scales in target values. 
+        \item HR variable not in LR input: Because temperature is a variable present in both the GCM and RCM, it was amidst the low-resolution features given as input to the temperature emulator from Doury et al~\cite{Doury}. In our case, SMB was only available in the RCM. Thus, our Emulator could reconstruct a high-resolution SMB image given only a limited number of other atmospheric variables that did not include a low-resolution image of SMB. This might explain why the SMB patterns of some regions in the Antarctic Peninsula, especially those with less seasonal patterns (e.g., P3 in \autoref{fig:points-timeseries-GCM-UPRCM}), might be more challenging for the model to reconstruct. We rely on the assumption that our model has a clear physical relationship to learn between our eight large-scale atmospheric variables and local-scale SMB, but this might not be true for all points in the Peninsula. 
+        \item Sparsity of variables: For their temperature emulator, the authors had seven atmospheric variables at different pressure levels at their disposition, resulting in 19 input features. Unfortunately, because of our chosen dataset, we could only train our model on eight features. However, Doury et al. found that while more inputs in their model seemed to improve the quality of the emulated series, having a "cheaper" model with fewer inputs showed satisfying results and could be regarded as a suitable option~\cite{Doury}. While we ideally wished to have more variables to help our Emulator reconstruct regional SMB over the Antarctic Peninsula, having a "cheaper" model at least gave a higher computational gain (4 minutes of training compared to 2 hours for Doury et al.).  
+        \item Space variations: Ice sheet SMB varies highly across multiple space and time scales, while temperature tends to be a more stable and seasonal variable. For example, as was discussed in \autoref{sec:res-time-series}, on the Antarctic Peninsula, while some regions have high seasonal amplitude changes in SMB, others have almost none. If they do, it is only with very little difference in amplitude. This was not the case for the near-surface temperature emulated in~\cite{Doury}, where, even though their target domain (southern France with the Pyrenees) covered different climates, its temperature fluctuated in approximately the same annual amplitude range for all points in their domain. Compared to their model, ours, therefore, had to acclimate different scales in SMB values over the Peninsula. For this, we used a normalized RMSE loss and attention, but our Emulator still better reconstructs regions with high seasonal change, hinting that NRMSE and attention might not be enough to account for different scales in target values. 
     \end{itemize}
-    \item Even if our Emulator can still be improved, especially when considering regions with dry climates, for the rest it can reproduce the temporal variability and spatial structure of SMB nearly perfectly for both $\hat{F}_{U}(UPRCM)$ and $\hat{F}_{G}(GCM)$. Therefore, by extending the model proposed in~\cite{Doury}, with slight modifications, it is possible to emulate SMB over the Antarctic Peninsula. 
+    \item Our Emulator could still be improved in further work, especially for dry climate regions. However, for most of the parts of the Antarctic Peninsula, it can reproduce the temporal variability and spatial structure of SMB nearly perfectly for both $\mathrm{\hat{F}_{U}(UPRCM)}$ and $\mathrm{\hat{F}_{G}(GCM)}$. Therefore, by extending the model proposed in~\cite{Doury}, with slight modifications, it is possible to emulate local-scale SMB over the Antarctic Peninsula. 
 \end{itemize}
 
 \section{On the usage of the perfect model framework}\label{sec:disc-perfect-model}
-As outlined in~\ref{subsec:training}, we trained two Emulators separately, one following the perfect model framework proposed in~\cite{Doury} and another directly on GCM data. 
+As outlined in \autoref{subsec:training}, we trained two Emulators separately, one following the perfect model framework proposed in~\cite{Doury} and another directly on large-scale GCM data. 
 \begin{itemize}
-    \item Emulator trained on UPRCM but evaluated on GCM: 
+    \item On the Emulator trained on UPRCM but evaluated on GCM ($\mathrm{\hat{F}_{U}(GCM)}$): 
     \begin{itemize}
-        \item The authors of ~\cite{Doury} state that the perfect model framework is necessary to learn the RCM downscaling function without any interfering biases between GCM and RCM. However, to be useful, the Emulator should give correct predictions of SMB when given large-scale GCM variables as input. Nevertheless, while $\hat{F}_{U}(GCM)$ predictions follow the correct temporal patterns, they consistently underestimate the true SMB values and produces a toned-down version of the RCM truth time-series.
-        \item Under the perfect model framework, the Emulator cannot learn large-scale GCM-RCM inconsistencies during its training. Consequently, when the model is given GCM inputs, GCM-RCM inconsistencies are preserved and appear in the predictions~\cite{Doury}.
+        \item Doury et al. state that the perfect model framework is necessary to learn the RCM downscaling function without any interfering biases between GCM and RCM. However, to be useful, the Emulator should give accurate reconstructions of SMB when given large-scale GCM variables as input. Otherwise, the model would not be useful if it needs upscaled RCM features to make predictions. Nevertheless, while the predictions of $\mathrm{\hat{F}_{U}(GCM)}$ follow the correct temporal patterns of the RCM truth, they consistently underestimate the true SMB values and produces a toned-down version of the true time series.
+        \item We suspect that this is because under the perfect model framework, the Emulator cannot learn large-scale GCM-RCM inconsistencies during its training. Consequently, when the model is given GCM inputs wile trained on UPRCM, inconsistencies are preserved and appear in the predictions~\cite{Doury}. This problem was also found by Doury et al. for their temperature emulator. 
     \end{itemize}
-    \item Existence of bias: As shown in~\ref{sec:res-bias-RCM-GCM}, we find significant bias and inconsistencies between RCM and GCM variables. For example, the two wind variables showed high temporal discrepancies between large and local-scale simulations. This might happen if there is an offset in the RCM time-series compared to the GCM or if the patterns are completely different. Furthermore, we also found spatial patterns inconsistencies for most atmospheric variables, especially for precipitation and radiation. Some of this bias might exist for problematic reasons, such as inconsistent forcings or boundary conditions when RCM simulations are computed~\cite{Doury, Laprise2008ChallengingST}. For example, we suspect these might be the reasons for the streaks visible on the left boundary of RCM images. However, we assume that the rest of the RCM-GCM inconsistencies exist because the RCM revises the low-resolution simulation for valid reasons, i.e., for a more refined representation of the physical processes~\cite{Doury}. 
-     \item Emulator trained on GCM: For this reason, we trained a second Emulator directly on GCM inputs to see whether it could account for the GCM-RCM bias. While $\hat{F}_{G}(GCM)$ misses some precision in emulating SMB patterns compared to $\hat{F}_{U}(UPRCM)$ for regions with minor SMB variations, it comes very close to the RCM truth for the rest. It is also performing exceedingly well in terms of predicting annual SMB values and is significantly better than $\hat{F}_{U}(GCM)$. 
-     \item Under the assumption that most of the GCM-RCM exists for valid reasons, it seems like the perfect model framework may not be necessary to train an Emulator. The model, when trained on GCM data, can predict SMB values close to the truth, as if it learned the underlying RCM-GCM inconsistencies and dynamics.   
+    \item Existence of bias: As shown in \autoref{sec:res-bias-RCM-GCM}, we find significant bias and inconsistencies between RCM and GCM variables. For example, the two wind variables showed high temporal discrepancies between large and local-scale simulations. This might happen if there is an offset in the RCM time series compared to the GCM or if the patterns are completely different. Furthermore, we also found spatial inconsistencies for most atmospheric variables, especially for precipitation and radiation. Some of this bias might exist for problematic reasons, such as inconsistent forcings or boundary conditions when RCM simulations are computed~\cite{Doury, Laprise2008ChallengingST}. We suspect these might be the reasons for the streaks visible on the left boundary of RCM images. However, we assume that the rest of the GCM-RCM inconsistencies exist because the RCM revises the low-resolution simulation for valid reasons i.e., for a more refined representation of the physical processes~\cite{Doury}. 
+     \item On the Emulator trained on GCM ($\mathrm{\hat{F}_{G}(GCM)}$): We trained a second Emulator directly with large-scale GCM inputs to see whether it could account for the inconsistencies. While $\mathrm{\hat{F}_{G}(GCM)}$ misses some precision compared to $\mathrm{\hat{F}_{U}(UPRCM)}$ in emulating SMB patterns for regions with minor SMB variations, it comes very close to the RCM truth for the other points. It is also performing exceedingly well in terms of predicting annual SMB values and is significantly better than $\mathrm{\hat{F}_{U}(GCM)}$. 
+     \item Under the assumption that most of the GCM-RCM inconsistencies exist for valid reasons, it seems like the perfect model framework may not be necessary to train our Emulator. When trained with low-resolution GCM data, the model can predict SMB values close to the truth, as if it learned the underlying RCM-GCM inconsistencies and dynamics.   
 \end{itemize}
 
-
-\section{Usage of the Emulator}\label{sec:utility-emulators}
-For the Emulator to be practical, it has to be faster and easier to use than computing an RCM simulation. We showed in the results section that if the pre-processing data pipeline is not too time-consuming, then training the Emulator and making predictions is very fast, with predictions made nearly instantaneously. However, we still need to explore how easy the model is to use.  
+\section{On the usage of the Emulator}\label{sec:utility-emulators}
+For our Emulator to be practical, it has to be faster and easier to use than computing an RCM simulation. We showed in \autoref{sec:computational-efficiency} that if the pre-processing data pipeline is not too time-consuming, then training the Emulator and making predictions is very fast, with predictions made nearly instantaneously. In the following, we will explore how easy the model is to use.  
 \begin{itemize}
-    \item Transparency: Neural networks have a reputation for being a black box algorithm with a decision process that is hard to understand. This is not different in our case. Because we give all available variables to our model without making any uphill feature selection, it would be interesting to know which physical features carry the most weight in the model's decision. Though now there are new ways to try to "open the black box"~\cite{Guidotti, Doury}, it remains a challenging problem for which we, unfortunately, did not have more time to explore. So while traditionally computing an RCM allows the user to have complete control over the variables, forcings, boundary conditions, etc., using a machine learning Emulator offers less transparency.  
-    \item Randomness and reproducibility: training a neural network while relying on a GPU creates several sources of randomness. To make our model reproducible, we used a fixed seed, and in this setting, our model always gives the same predictions. Nevertheless, another seed might provide very different results, so to reproduce our results, one must be careful to use the same random settings. To assess the robustness of our Emulator, one could run it several times using different seeds and observe the average results. Due to time constraints, this was omitted. 
+    \item Transparency: Neural networks have a reputation for being a black box algorithm with a decision process that is hard to understand. This is not different in our case. Because we give all available variables to our model without making any uphill feature selection, it would be interesting to know which physical features carry the most weight in the model's decision. Even though there are new ways to try to "open the black box"~\cite{Guidotti, Doury}, it remains a challenging problem for which we, unfortunately, did not have more time to explore. While traditionally computing an RCM allows the user to have complete control over the variables, forcings, boundary conditions, etc., using a machine learning Emulator offers less transparency.  
+    \item Randomness and reproducibility: training a neural network while relying on a GPU creates several sources of randomness~\cite{Doury,Zhuang2021}. To make our model reproducible, we used a fixed seed, and in this setting, our model always gives the same predictions. Nevertheless, another seed might provide very different results, so to reproduce our results, one must be careful to use the same random settings. To assess the robustness of our Emulator, one could run it several times using different seeds and observe the average results. Due to time constraints, this was omitted. 
     \item Specificity of model: 
     \begin{itemize}
-        \item Other regions: our model focuses only on one target region, the Antarctic Peninsula. If one wanted to expand it to other areas, one would have to re-train the model on data of this specific region. We suspect that applying our Emulator elsewhere would not work otherwise, as it would be faced with images very different from its training. However, we believe that because the Emulator works well for the Peninsula, an area that shows high variability in SMB patterns, it will perform just as well for other domains of Antarctica once it has been correctly trained. 
-        \item Other simulations: just as for another target domain, if one wanted to extend the Emulator to other climate model simulations, one would need to re-train it for those climate models. One exception might be if they are very similar to ACCESS 1.3 and MAR(ACCESS 1.3). For example, one could try making predictions with the Emulator on another future RCP simulation of the MAR(ACCESS 1.3) e.g., RCP 4.5 instead of RCP 8.5.  
+        \item Other regions: our model focuses only on reconstructing one target domain, the Antarctic Peninsula. If one wanted to expand it to other areas, one would have to re-train the model on data of this specific region. We suspect that otherwise, applying our Emulator elsewhere would not work, as it would be faced with images very different from its training. However, we believe that because the Emulator works well for the Peninsula, an area that shows high variability in SMB patterns, it will perform just as well for other domains of Antarctica once it has been correctly trained. 
+        \item Other climate simulations: just as for another target domain, if one wanted to extend the Emulator to other climate model simulations, one would need to re-train it for those climate models. One exception might be if they are very similar to ACCESS 1.3 and MAR(ACCESS 1.3). For example, one could try making predictions with our Emulator on another future RCP simulation of MAR(ACCESS 1.3) e.g., RCP4.5 instead of RCP8.5.  
     \end{itemize}
-    \item Availability of data: the ACCESS 1.3 GCM data is openly available to the public on the Australian NCI
-    website~\cite{NCI}. However, we had to ask for the MAR(ACCESS 1.3) RCM data from the Geo-science Institute of the University of Grenobles. Therefore, while acquiring GCM data is easy, getting access to RCM simulations might be more difficult.   
+    \item Availability of data: the ACCESS 1.3 GCM data is openly available to the public on the Australian NCI \href{https://esgf.nci.org.au/search/esgf-nci/}{website}~\cite{NCI}. However, we had to ask for the MAR(ACCESS 1.3) RCM data from the Geo-science Institute of the University of Grenobles. Therefore, while acquiring GCM data is easy, getting access to RCM simulations might be more challenging for a lambda user.
+    \item Availability of code: The trained Emulators, notebooks, and python scripts for pre-processing and machine learning are available on our \href{https://github.com/marvande/master-thesis}{GitHub} repository~\cite{GitHub}. For any questions or additional information about the code, email: \href{mailto:marijn.vandermeer@bluewin.ch}{marijn.vandermeer@bluewin.ch}. 
 \end{itemize}
 Overall, while the Emulator is very fast in training and prediction, the primary time bottle-neck is getting the correct data and pre-processing it to fit the desired training setting.  
 
@@ -604,23 +693,20 @@ Overall, while the Emulator is very fast in training and prediction, the primary
 \chapter{Conclusion}
 %%%%%%%%%%%%%%%%%%%%
 \begin{itemize}
-    \item The idea of Emulator: In this study, we built a machine learning model called the Emulator that emulates local-scale surface mass balance (SMB) values over the Antarctic Peninsula by learning the downscaling function of a regional climate model (RCM). This means that our model, when given low-resolution atmospheric variables from a global climate model (GCM), can reconstruct a high-resolution image of SMB from a regional climate model. Compared to an RCM, the Emulator is designed to be computationally cheaper and faster.   
-    \item How the Emulator was built: Our model is an extension of a U-Net model proposed in~\cite{Doury} that emulated near-surface temperature over the south of France. We extended their U-net by adding attention mechanisms in the Encoder of the U-Net and replaced traditional convolutional operations with depthwise-separable convolutions. Furthermore, to account for the different scales of SMB values across the Antarctic Peninsula, we change the original MSE loss to a normalised RMSE. 
-    \item Training setting: For training our model, we propose two frameworks. The first follows the perfect model framework from~\cite{Doury} where the Emulator receives low-resolution inputs from the RCM instead of the GCM. For this, we create large-scale features from RCM with interpolation. This setting is designed so that the model learns the downscaling function undisturbed by potential RCM-GCM inconsistencies and biases. In the second framework, we train the model on large-scale features directly sourced from the GCM to evaluate whether it can learn those inconsistencies. 
+    \item The idea of the Emulator: In this thesis, we built a machine learning model called the Emulator that reconstructs local-scale surface mass balance (SMB) values over the Antarctic Peninsula by learning the downscaling function of a regional climate model (RCM). This means that our model, when given large-scale (low-resolution) atmospheric variables from a global climate model (GCM), can reconstruct a local-scale (high-resolution) image of SMB from an RCM. Compared to an RCM, the Emulator is designed to be computationally faster.   
+    \item How the Emulator was built: Our model is an extension of a U-Net model proposed by Doury et al. that emulated near-surface temperature over the south of France~\cite{Doury}. We extended their U-net by adding attention mechanisms in the Encoder of the U-Net and replaced traditional convolutional operations with depthwise-separable convolutions. Furthermore, to account for the different scales of SMB values across the Antarctic Peninsula, we change their original MSE loss to a normalised RMSE. 
+    \item Training setting: For training our model, we propose two frameworks. The first follows the perfect model framework from~\cite{Doury} where the Emulator receives low-resolution inputs from the RCM instead of the GCM. For this, we create large-scale features from RCM with interpolation. This setting is designed so that the model learns the downscaling function undisturbed by potential GCM-RCM inconsistencies and biases. In the second framework, we train the model on large-scale features directly sourced from the GCM to evaluate whether it can learn those inconsistencies. 
     \item Computational speed: Training our model takes under ten minutes on a GPU, and predictions are almost instantaneous, but data gathering and pre-processing can be time-consuming. However, our Emulator is significantly faster than an RCM simulation, which can take several weeks on a supercomputer. 
     \item Evaluation of the Emulators:
     \begin{itemize}
-        \item We evaluate the first Emulator, trained in the perfect model setting, on large-scale features from the RCM, and in a second step, directly with variables from the GCM. While the Emulator evaluated on RCM features can almost perfectly reproduce the high-resolution SMB truth, predictions made with GCM features consistently underestimate it. This is not surprising as we find significant spatial and temporal bias while exploring the consistency between GCM and RCM features. Because the the perfect model framework does not allow the Emulator to learn large-scale GCM-RCM inconsistencies, they are conserved when predicting with GCM variables, leading to underestimation. 
-        \item The second Emulator, trained directly on GCM features, can reproduce detailed high-resolution SMB maps. The model can make correct annual SMB predictions and reconstruct the temporal patterns of individual SMB time-series and global spatial structures over the Antarctic Peninsula. Its only limitation is producing an accurate representation of points in dry climates where NRMSE loss is insufficient to account for the small SMB values. In further work, one could focus on these climates to improve the Emulator's predictions. 
+        \item We evaluate the first Emulator, trained in the perfect model setting, on large-scale features from the upscaled RCM, and in a second step, directly with variables from the GCM. While the Emulator evaluated on RCM features can almost perfectly reproduce the high-resolution SMB truth, predictions made with GCM features consistently underestimate it. This is not surprising as we find significant spatial and temporal bias while exploring the consistency between GCM and RCM features. Because the perfect model framework does not allow the Emulator to learn large-scale GCM-RCM inconsistencies, they are conserved when predicting with GCM variables, leading to underestimation. 
+        \item The second Emulator, trained directly on GCM features, can reproduce detailed high-resolution SMB maps. The model can make correct annual SMB predictions and reconstruct the temporal patterns of individual SMB time series and global spatial structures over the Antarctic Peninsula. Its only limitation is producing an accurate representation of points in dry climates where the NRMSE loss is insufficient to account for the small SMB values. In further work, one could focus on these climates to improve the Emulator's predictions. 
         
         Assuming that RCM-GCM inconsistencies exist for a valid reason and that we wish the Emulator to account for them, our results indicate that a perfect model framework might not be needed and that our model can learn them.  
     \end{itemize}
-    
-In conclusion, we build an machine learning RCM-Emulator that can predict SMB over the Antarctic Peninsula significantly faster than computing an RCM simulation. 
 \end{itemize}
+In conclusion, we built a machine learning RCM-Emulator that can predict SMB accurately over the Antarctic Peninsula significantly faster than computing an RCM simulation. 
 
-\section{Code availability}
-All notebooks and python scrips for pre-processing and machine learning are available on our \href{https://github.com/marvande/master-thesis}{GitHub} repository~\cite{GitHub}. For any questions or additional information about the code, email: \href{mailto:marijn.vandermeer@bluewin.ch}{marijn.vandermeer@bluewin.ch}. 
 
 \cleardoublepage
 \phantomsection
@@ -683,6 +769,21 @@ All pre-processing of the GCM is done on Pangeo, a community platform for Big Da
   \vspace{-3mm}
   \label{fig:training-data-flow}
 \end{figure}
+
+\section{On the usage of attention}
+[A COMPLETER] Why? Is adding attention really an improvement? Table~\ref{tab:compare-models}. We compared the performance of the U-Net with and without adding attention and DSC modules, we see in Table~\ref{tab:compare-models} that 
+Percentage of improvement when going from Model without attention to adding attention and DSC:
+\begin{itemize}
+    \item RMSE: 9\% and 7\%
+    \item NRMSE: 10\% and 7\%
+    \item Wasserstein: 26\% and 28\%
+    \item Pearson: 1\% and 2\% 
+\end{itemize}
+
+\newpage
+\begin{landscape}
+\input{tables/hyperparam}
+\end{landscape}
 
 
 

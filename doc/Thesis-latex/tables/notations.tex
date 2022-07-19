@@ -28,14 +28,16 @@
         \\
         $\operatorname{UPRCM}$ &  RCM upscaled to GCM resolution & 
         \\
-        $\operatorname{LR}$ & Low resolution (GCM resolution). & \\
-        $\operatorname{HR}$ & High resolution (RCM resolution). & \\
-        $\hat{F}_U(\operatorname{UPRCM})$ & Emulator trained on UPRCM data. Prediction on UPRCM. & $\llbracket 1, K \rrbracket \times \llbracket 1, L \rrbracket$
+        $\operatorname{LR}$ & Low-resolution (GCM resolution) & \\
+        $\operatorname{HR}$ & High-resolution (RCM resolution) & \\
+        $\hat{F}_U(\operatorname{UPRCM})$ & Emulator trained on UPRCM data, prediction on UPRCM & $\llbracket 1, K \rrbracket \times \llbracket 1, L \rrbracket$
         \\
-        $\hat{F}_U(\operatorname{GCM})$ & Emulator trained on UPRCM data. Prediction on GCM. & $\llbracket 1, K \rrbracket \times \llbracket 1, L \rrbracket$
+        $\hat{F}_U(\operatorname{GCM})$ & Emulator trained on UPRCM data, prediction on GCM & $\llbracket 1, K \rrbracket \times \llbracket 1, L \rrbracket$
         \\
-        $\hat{F}_G(\operatorname{GCM})$ & Emulator trained on GCM data. Prediction on GCM. & $\llbracket 1, K \rrbracket \times \llbracket 1, L \rrbracket$
+        $\hat{F}_G(\operatorname{GCM})$ & Emulator trained on GCM data, prediction on GCM & $\llbracket 1, K \rrbracket \times \llbracket 1, L \rrbracket$
         \\
+        DSC & Depth-wise separable convolutions & \\
+        MAR & Modèle Atmosphérique Régional & \\ 
         
 \bottomrule
     \end{tabular}
