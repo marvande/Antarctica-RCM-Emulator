@@ -6,21 +6,21 @@
     \toprule
         \textbf{Variable Name} & \textbf{Variable Notation} & \textbf{Units} & \textbf{Dimensions} \\ \toprule
         \textbf{2D variables} & & & \\ \bottomrule 
-        Northward Wind & NW & $[ms^{-1}]$ & $ \mathcal{D}$   \\ 
-        Eastward Wind & EW & $[ms^{-1}]$ & $ \mathcal{D}$ \\
-        Downwelling Shortwave Radiation & SWD & $[Wm^{-2}]$ & $ \mathcal{D}$ \\
-        Downwelling Longwave Radiation & LWD & $[Wm^{-2}]$ & $ \mathcal{D}$ \\
-        Specific Humidity & QQP & $[g/Kg]$ & $ \mathcal{D}$ \\
-        Temperature & TT & $[\degree]$ & $ \mathcal{D}$ \\
-        Precipitation & PR & $[mmWe/day]$ & $ \mathcal{D}$  \\
-        Pressure & SP & $[hPa]$ & $ \mathcal{D}$  \\
+        Northward Wind & NW & $\si{[ms^{-1}]}$ & $\mathcal{D}$   \\ 
+        Eastward Wind & EW & $\si{[ms^{-1}]}$ & $ \mathcal{D}$ \\
+        Downwelling Shortwave Radiation & SWD & $\si{[Wm^{-2}]}$ & $ \mathcal{D}$ \\
+        Downwelling Longwave Radiation & LWD & $\si{[Wm^{-2}]}$ & $\mathcal{D}$ \\
+        Specific Humidity & QQP & $\si{[g/Kg]}$ & $\mathcal{D}$ \\
+        Temperature & TT & $\si{[\degree C]}$ & $\mathcal{D}$ \\
+        Precipitation & PR & $\si{[mmWe/day]}$ & $\mathcal{D}$  \\
+        Pressure & SP & $\si{[hPa]}$ & $ \mathcal{D}$  \\
         \toprule
          \textbf{1D variables} & & & \\ \bottomrule
         Spatial mean of 2D variables & $\bar{X}_{x}$ & & $[C_1]$ \\ 
         Spatial std of 2D variables & $\sigma\left(X_{x}\right)$ & & $[C_1]$ \\
-        Seasonal Indicators & & & $[2]$\\ \bottomrule
+        Seasonal Indicators & $\cos$, $\sin$& & $[2]$\\ \bottomrule
         
     \end{tabular}
-        \subcaption*{\small Table~\ref{tab:features}. Two and one-dimensional input features given to the Emulator. Each feature is measured daily at (near) surface level. The frequency of variables is monthly through a monthly mean aggregation.}
+        \subcaption*{\small Table~\ref{tab:features}. Two and one-dimensional input features given to the RCM-emulator at time-step $t\in T$. Each feature is measured daily at (near) surface level over domain $\mathcal{D}$. The frequency of variables is monthly after a monthly mean aggregation.}
             \label{tab:features}
 \end{table}
