@@ -11,9 +11,9 @@
         input grid & $\mathcal{D}$   \\
         $(k,l)$ & Spatial indexes over
         target grid & $\mathcal{E}$   \\
-        $X$ & Input: set of 2D variables over $\mathcal{D}$ & $T \times \llbracket 1, I \rrbracket \times \llbracket 1, J \rrbracket \times C_1$   \\
-        $Z$ & Input: set of 1D variables over $\mathcal{D}$ & $T \times C_2$   \\
-        $Y$ & Target: surface mass balance over $\mathcal{E}$ & $T \times \llbracket 1, K \rrbracket \times \llbracket 1, L \rrbracket$  \\
+        $X$ & Input: 2D variables over $\mathcal{D}$ & $T \times \llbracket 1, I \rrbracket \times \llbracket 1, J \rrbracket \times C_1$   \\
+        $Z$ & Input: 1D variables over $\mathcal{D}$ & $T \times C_2$   \\
+        $Y$ & Target: SMB over $\mathcal{E}$ & $T \times \llbracket 1, K \rrbracket \times \llbracket 1, L \rrbracket$  \\
         $t$ & Monthly temporal index & $T$   \\
         $x$ & 2D variables index & \\
         $z$ & 1D variables index &  
@@ -34,11 +34,14 @@
         \\
         $\mathrm{\hat{F}_G(GCM)}$ & Emulator trained on GCM data, prediction on GCM & $\llbracket 1, K \rrbracket \times \llbracket 1, L \rrbracket$
         \\
+        AIS & Antarctic ice sheet & \\
+        SMB & Surface mass balance & \\
         DSC & Depth-wise separable convolutions & \\
+        CBAM & Convolutional block attention mechanisms & \\ 
         MAR & Modèle Atmosphérique Régional & \\ 
         
 \bottomrule
     \end{tabular}
-        \subcaption*{\small Table~\ref{tab:notations}. Notations used in this paper.}
+        \subcaption*{\small Table~\ref{tab:notations}. Notations used in this thesis.}
             \label{tab:notations}
 \end{table}
