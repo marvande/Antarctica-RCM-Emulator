@@ -11,8 +11,10 @@
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \ProvidesPackage{EPFLreport}
+\setlength{\parindent}{0pt}
 \usepackage[absolute]{textpos}
 \usepackage{graphicx}
+\usepackage{multirow}
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage[tracking=true,kerning=true,spacing=true]{microtype}
@@ -110,8 +112,8 @@
     \includegraphics[width=2.5in]{images/EPFLlogo.pdf}
 \end{textblock*}
 \if@lablogo
-\begin{textblock*}{4in}[0.3066,0.39](5.7in,0.85in)
-    \includegraphics[width=3in]{images/TU_logo.png}
+\begin{textblock*}{4in}[0.3066,0.515](5.7in,0.85in)
+    \includegraphics[width=3in]{doc/Thesis-latex/images/tudelft.pdf}
 \end{textblock*}
 \fi
 \vspace*{\drop}
@@ -204,8 +206,14 @@ and show them with \texttt{\textbackslash{}makeacks}.
 \def\abstract{\cleardoublepage
 \chapter*{Abstract}
 \markboth{Abstract}{Abstract}
-\addcontentsline{toc}{chapter}{Abstract (English/Français)}}
+\addcontentsline{toc}{chapter}{Abstract}}
 \def\endabstract{}
+
+\def\plainlanguage{\cleardoublepage
+\chapter*{Plain Language Summary}
+\markboth{Plain Language Summary}{Plain Language Summary}
+\addcontentsline{toc}{chapter}{Plain Language Summary}}
+\def\endplainlanguage{}
 
 \def\frenchabstract{\begin{otherlanguage}{french}
 \cleardoublepage
