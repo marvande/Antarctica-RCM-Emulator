@@ -212,10 +212,10 @@ def calculateMetrics(preds, true_smb, target_dataset, train_set, REGION, ignoreS
 def metricsData(data):
     dic = dict(
         min=np.nanmin(data),
-        p05=np.nanpercentile(data, 5),
+        #p05=np.nanpercentile(data, 5),
         mean=np.nanmean(data),
         median=np.nanmedian(data),
-        p95=np.nanpercentile(data, 95),
+        #p95=np.nanpercentile(data, 95),
         max=np.nanmax(data),
     )
     return dic

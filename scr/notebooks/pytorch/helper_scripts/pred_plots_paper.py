@@ -60,11 +60,18 @@ def plotTimeseries3Models(preds1, preds2, preds3, true_smb, train_set, target_da
         M = 4
         i, evencol, evenrow= 1, 1, 1
     
+        """
+        grids = {'ts': [[0, 0,2], [0, 2, 4], [3, 0,2], [3, 2, 4]],
+                'ds': [[1, 0,2], [1, 2, 4], [4, 0,2], [4, 2, 4]],
+                            'as': [[2, 0], [2,2], [5, 0], [5,2]],
+                            'bx': [[2, 1], [2,3], [5, 1], [5,3]]   
+        }"""
+    
         gs = gridspec.GridSpec(4, 4, width_ratios=[2.5, 1, 2.5, 1], height_ratios= [2, 1,2, 1])
     
         grids = {'ts': [[0, 0,2], [0, 2, 4], [2, 0,2], [2, 2, 4]],
                             'as': [[1, 0], [1,2], [3, 0], [3,2]],
-                            'bx': [[1, 1], [1,3], [3, 1], [3,3]]   
+                            'ds': [[1, 1], [1,3], [3, 1], [3,3]]   
         }
     
         for p in points_RCM:
@@ -112,6 +119,7 @@ def plotTimeseries3Models(preds1, preds2, preds3, true_smb, train_set, target_da
             
             
             
+            
                 # ------------------ ANNUAL SMB
                 yearlySMB = dfPixels.resample("y").sum() # yearly sum
                 yearlySMB.index = yearlySMB.index.strftime("%Y")
@@ -143,6 +151,8 @@ def plotTimeseries3Models(preds1, preds2, preds3, true_smb, train_set, target_da
                         ax.set_ylabel('[mmWe]', fontsize = fontsize)
                     
                 ax.set_title("Annual SMB", fontsize = fontsize)
+            
+                """
                 # ------------------ Boxplot SMB
                 grid = grids['bx']
                 ax = plt.subplot(gs[grid[i-1][0], grid[i-1][1]])
@@ -170,6 +180,26 @@ def plotTimeseries3Models(preds1, preds2, preds3, true_smb, train_set, target_da
             
                 #ax.text(0.02, 0.95, textstrBoxplots, transform=ax.transAxes, fontsize=14,verticalalignment='top')
                 ax.grid(axis = 'y')
+                """
+            
+                # ------------------ DISTRIBUTION SMB
+                grid = grids['ds']
+                ax = plt.subplot(gs[grid[i-1][0], grid[i-1][1]])
+                sns.kdeplot(data = dfPixels, x = labels[3], label=labels[3], color=colors[0], alpha=0.8)
+                sns.kdeplot(data = dfPixels, x = labels[0], label=labels[0],color=colors[1], ax = ax, alpha = 0.8, linewidth = 1.5)
+                sns.kdeplot(data = dfPixels, x = labels[1], label=labels[1], color=colors[2], ax = ax, alpha = 0.8, linestyle = ':', linewidth = 2.5)
+                sns.kdeplot(data = dfPixels, x = labels[2], label=labels[2], color=colors[3], ax = ax, alpha = 0.8, linestyle = '--', linewidth = 2)
+            
+                """
+                if i == 4:
+                  ax.legend(loc="upper right", ncol =2, fontsize = 16)
+                if i == 2:
+                  ax.legend(loc="upper left", ncol =2, fontsize = 16)"""
+            
+                ax.set_title("PDF", fontsize = fontsize)
+                ax.set_xlabel('[mmWe/day]', fontsize = fontsize)
+                ax.set_ylabel('Density', fontsize = fontsize)
+                ax.tick_params(axis='both', which='major', labelsize=16)
             
                 i+=1
         plt.tight_layout()
