@@ -79,8 +79,6 @@ We conclude that it is possible to make fast and detailed reproductions of SMB a
 using machine learning. Therefore, machine learning can be an interesting and cheap tool for
 gathering local-scale information about how ice sheets vary with climate change.
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 
 
 ### Built With
@@ -96,7 +94,7 @@ gathering local-scale information about how ice sheets vary with climate change.
 <!-- GETTING STARTED -->
 ## Getting Started
 
-All notebooks to run the model and explore its pre-processing are available [here](https://github.com/marvande/master-thesis/tree/main/scr/notebooks). 
+All notebooks to run the model and explore its pre-processing are available [here](https://github.com/marvande/master-thesis/tree/main/scr). 
 
 
 
@@ -104,8 +102,6 @@ All notebooks to run the model and explore its pre-processing are available [her
 ## License
 
 Distributed under the MIT License. See `LICENSE.txt` for more information.
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
 
