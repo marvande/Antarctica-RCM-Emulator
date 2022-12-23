@@ -11,10 +11,10 @@
     <img src="images/EPFLlogo.png" alt="Logo" width="150" height="80">
   </a>
 
-  <h3 align="center">Regional Surface Mass Balance Emulator based on Deep Learning</h3>
+  <h3 align="center">Deep Learning Regional Climate Model Emulators:</h3>
 
   <p align="center">
-    Local-scale SMB predictions over the Antarctic Peninsula
+    a comparison of two downscaling training frameworks
     <br />
     <a href="https://github.com/marvande/master-thesis/blob/main/master_thesis.pdf"><strong>Explore the report »</strong></a>
     <br />
@@ -46,38 +46,7 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-The Antarctic ice sheet contains the majority of ice on Earth and would be the most significant
-contributor to sea-level rise if it were to melt completely. A critical variable in studying the
-stability and evolution of ice on Antarctica, such as glaciers and ice shelves, is surface mass
-balance (SMB). SMB is the balance between processes that add and remove ice on top of an ice
-sheet, glacier, or ice shelf. For example, those processes can include snowfall, surface melt, or
-erosion by winds. To predict changes in the Antarctic ice sheet, climate scientists need highly
-detailed information about SMB.
-
-High-resolution maps of SMB are usually only produced by regional climate models (RCM).
-But these are costly and time-consuming to create because they require calculations on very
-powerful computers. The goal of this project was to accomplish this faster and with similar
-accuracy by using machine learning to predict SMB changes.
-
-We trained a machine-learning algorithm i.e., a computer program that recognizes patterns in
-data, to learn the relationship between a group of low-resolution images of climate variables
-and a high-resolution image of regional SMB. The low-resolution data consisted of a bundle
-of atmospheric variables influencing SMB, such as precipitation, temperature, and surface
-pressure over the Antarctic Peninsula, an interesting region of Antarctica. Those coarse-grain
-atmospheric variables are easier and cheaper to obtain from worldwide simulations made by
-climate scientists.
-
-Our machine-learning model can recreate regional images of SMB almost identical to ground
-truth observations by learning the relationship between low and high-resolution inputs. The
-model only struggles to predict proper SMB values for very dry areas (where the SMB is small)
-because it tends to emphasize points with larger changes in SMB. The predictive model is very
-fast, with training under ten minutes and output in a few seconds. What remains to be studied is
-whether the model would need new training for every new (unseen) region in Antarctica or if it
-could be deployed across areas.
-
-We conclude that it is possible to make fast and detailed reproductions of SMB at regional scales
-using machine learning. Therefore, machine learning can be an interesting and cheap tool for
-gathering local-scale information about how ice sheets vary with climate change.
+Regional climate models (RCMs) have a high computational cost due to their higher spatial resolution compared to global climate models (GCMs). Therefore, various downscaling approaches have been developed as a surrogate for the dynamical downscaling of GCMs. This study assesses the potential of using a cost-efficient machine learning alternative to dynamical downscaling by using the example case study of emulating surface mass balance (SMB) over the Antarctic Peninsula. More specifically, we determine the impact of the training framework by comparing two training scenarios: (1) a perfect and (2) an imperfect model framework. In the perfect model framework, the RCM-emulator learns only the downscaling function, similar to classical super-resolution approaches; therefore, it was trained with upscaled RCM features at GCM resolution. This emulator accurately reproduced SMB when evaluated on upscaled RCM features (mean RMSE of 0.27 mm w.e./day), but its predictions on GCM data conserved RCM-GCM inconsistencies and led to underestimation. In the imperfect model framework, the RCM-emulator was trained with GCM features and downscaled the GCM while exposed to RCM-GCM inconsistencies. This emulator predicted SMB close to the truth, showing it learned the underlying inconsistencies and dynamics. Our results suggest that a deep learning RCM-emulator can learn the proper GCM to RCM downscaling function while working directly with GCM data. Furthermore, the RCM-emulator presents a significant computational gain compared to an RCM simulation. We conclude that machine learning emulators can be applied to produce fast and fine-scaled predictions of RCM simulations from GCM data.
 
 
 
