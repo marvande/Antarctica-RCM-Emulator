@@ -77,7 +77,7 @@ Distributed under the MIT License. See `LICENSE.txt` for more information.
 <!-- CONTACT -->
 ## Contact
 
-Marijn van der Meer - marijnvandermeer@bluewin.ch
+Marijn van der Meer - vmarijn@ethz.ch
 
 Project Link: [https://github.com/marvande](https://github.com/marvande)
 
