@@ -18,10 +18,11 @@ from datetime import datetime
 import seaborn as sns
 import matplotlib
 from matplotlib.ticker import LogFormatter 
+
+# Helper scripts
 from dataFunctions import *
 from config import *
 from reproducibility import *
-
 
 # Set seed:
 seed_all(SEED)

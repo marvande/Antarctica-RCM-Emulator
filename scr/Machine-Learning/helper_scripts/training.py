@@ -7,7 +7,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, random_split
-from config import *
 import logging
 import wandb
 from torch import optim
@@ -24,12 +23,14 @@ import numpy as np
 from google.colab import files
 
 
+# Helper scripts
 # from GC_scripts import * # Google cloud scripts
 from dataFunctions import *
 from makeInputs import *
 from reproducibility import *
-from unet import *
-from SmaAt_UNet import *
+from config import *
+#from unet import *
+from RCM_Emulator_UNet import *
 
 
 # Set seed:
@@ -55,7 +56,8 @@ def train_net(
     nrmse_maxmin: bool = True,
     earlystopping: int = None,
     savetoGD: bool = True,  # save model to Google drive
-    log_: bool = True
+    log_: bool = True,
+    path_GD: str = "/content/gdrive/My Drive/EPFL/RCM-emulator/saved_models/"
 ):
     # 2. Split into train / validation partitions
     n_val = int(len(dataset) * val_percent)
@@ -295,10 +297,10 @@ def train_net(
     if savetoGD:
         if log_:
             logging.info("Saving model on google drive")
-        pathGD = f"/content/gdrive/My Drive/Master-thesis/saved_models/{nameSave}"
+        path_save_GD = path_GD+nameSave
         torch.save(
             net.state_dict(),
-            pathGD,
+            path_save_GD,
         )
     # Upload final model to google cloud:
     # pathGC = 'Chris_data/RawData/MAR-ACCESS1.3/monthly/SavedModels/'
@@ -308,7 +310,7 @@ def train_net(
     # Outputs of Losses for plots:
     train_loss_out = {"MSE": train_mse_e, "RMSE": train_rmse_e, "NRMSE": train_nrmse_e}
     val_loss_out = {"MSE": val_mse_e, "RMSE": val_rmse_e, "NRMSE": val_nrmse_e}
-    return train_loss_out, val_loss_out, nameSave
+    return train_loss_out, val_loss_out, nameSave, num_epoch
 
 
 def evaluate(net, dataloader, device, MSE, loss_, mask, ignoreSea):
@@ -371,15 +373,15 @@ def trainFlow(
     full_input,
     full_target,
     mask,
-    region: str = REGION,
-    regions=REGIONS,
+    region: str,
+    regions,
     test_percent: float = TEST_PERCENT,
     val_percent: float = VAL_PERCENT,
     seed: int = SEED,
     num_epochs: int = NUM_EPOCHS,
     batch_size: int = BATCH_SIZE,
     lr: float = LR,
-    amp: bool = AMP,
+    amp: bool = False,
     train: bool = True,
     randomSplit: bool = True,
     loss_: str = "MSE",
@@ -388,7 +390,8 @@ def trainFlow(
     nrmse_maxmin: bool = True,
     earlystopping: int = None,
     savetoGD: bool = True,
-    log_:bool = True
+    log_:bool = True,
+    path_GD: str = "/content/gdrive/My Drive/EPFL/RCM-emulator/saved_models/"
 ):
     seed_all(SEED)
     
@@ -489,7 +492,7 @@ def trainFlow(
 
     # 3. Train
     if train:
-        train_loss_e, val_loss_e, nameSave = train_net(
+        train_loss_e, val_loss_e, nameSave, num_epoch = train_net(
             net=net,
             mask=mask,
             dataset=train_set,
@@ -507,33 +510,34 @@ def trainFlow(
             nrmse_maxmin=nrmse_maxmin,
             earlystopping=earlystopping,
             savetoGD=savetoGD,
-            log_ = log_
+            log_ = log_,
+            path_GD = path_GD
         )
-        return train_loss_e, val_loss_e, train_set, test_set, net, nameSave
+        return train_loss_e, val_loss_e, train_set, test_set, net, nameSave, num_epoch
     else:
         return train_set, test_set, net
 
 
 """plotLoss: plots training and validation loss and metrics
 """
-def plotLoss(train_loss_e, val_loss_e):
+def plotLoss(train_loss_e, val_loss_e, num_epochs):
     f = plt.figure(figsize=(10, 8))
     ax = plt.subplot(3, 1, 1)
     ax.plot(train_loss_e["MSE"], label="training")
     ax.plot(val_loss_e["MSE"], label="validation")
-    ax.set_title(f"MSE for {NUM_EPOCHS} epochs")
+    ax.set_title(f"MSE for {num_epochs} epochs")
     ax.set_xlabel("Num epochs")
 
     ax = plt.subplot(3, 1, 2)
     ax.plot(train_loss_e["RMSE"], label="training")
     ax.plot(val_loss_e["RMSE"], label="validation")
-    ax.set_title(f"RMSE for {NUM_EPOCHS} epochs")
+    ax.set_title(f"RMSE for {num_epochs} epochs")
     ax.set_xlabel("Num epochs")
 
     ax = plt.subplot(3, 1, 3)
     ax.plot(train_loss_e["NRMSE"], label="training")
     ax.plot(val_loss_e["NRMSE"], label="validation")
-    ax.set_title(f"NRMSE for {NUM_EPOCHS} epochs")
+    ax.set_title(f"NRMSE for {num_epochs} epochs")
     ax.set_xlabel("Num epochs")
     plt.legend()
     plt.tight_layout()
