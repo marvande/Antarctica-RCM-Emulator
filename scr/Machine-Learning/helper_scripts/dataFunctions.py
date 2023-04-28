@@ -9,7 +9,7 @@ import torch
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
-
+from matplotlib import colors
 
 """
 plotAllVar: plots all variables in a xr.Dataset
@@ -230,12 +230,15 @@ def plotTrain(
     dftrain[VAR] = xr.Variable(
         dims=("y", "x"), data=sample2dtrain[:, :, numVar], attrs=ds[VAR].attrs
     )
+    divnorm=colors.TwoSlopeNorm(vcenter=0.)
+    
     pl = dftrain[VAR].plot(
         ax=ax,
         x="x",
         transform=ccrs.SouthPolarStereo(),
         add_colorbar=False,
         cmap=cmap,
+        norm=divnorm
     )
 
     ax.coastlines("10m", color="black", linewidth=1)
@@ -268,6 +271,8 @@ def plotTarget(
     dftrain["SMB"] = xr.Variable(
         dims=("y", "x"), data=sampletarget[:, :, 0], attrs=ds["SMB"].attrs
     )
+    divnorm=colors.TwoSlopeNorm(vcenter=0.)
+    
     pl = dftrain.SMB.plot(
         ax=ax,
         x="x",
@@ -276,6 +281,7 @@ def plotTarget(
         cmap=cmap,
         vmin=vmin,
         vmax=vmax,
+        norm = divnorm
     )
     ax.coastlines("10m", color="black", linewidth=1)
     # ax.gridlines()
@@ -348,6 +354,7 @@ def plotPred(
     dftrain["SMB"] = xr.Variable(
         dims=("y", "x"), data=samplepred[:, :, 0], attrs=ds["SMB"].attrs
     )
+    divnorm=colors.TwoSlopeNorm(vcenter=0.)
     pl = dftrain.SMB.plot(
         ax=ax,
         x="x",
@@ -356,6 +363,7 @@ def plotPred(
         cmap=cmap,
         vmin=vmin,
         vmax=vmax,
+        norm = divnorm
     )
     ax.coastlines("10m", color="black", linewidth=1)
     # pax.gridlines()

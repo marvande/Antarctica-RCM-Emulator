@@ -234,7 +234,7 @@ plotPearsonCorr: Plot a 2D plot whit its correlation value for each pixel (i,j)
 
 
 def plotPearsonCorr(
-    target_dataset, samplecorr, mean, ax, region="Whole Antarctica", cmap = 'GnBu', type  = 'RCM', colorbar = True
+    target_dataset, samplecorr, mean, ax, region="Whole Antarctica", cmap = 'GnBu', type  = 'RCM', colorbar = True, vmin = -1
 ):
     if type == 'RCM':
         ds = createLowerTarget(
@@ -242,7 +242,7 @@ def plotPearsonCorr(
             )
     else:
         ds = createLowerInput(target_dataset, region="Larsen", Nx=48, Ny=25, print_=False)
-        ds = ds.where(ds.y>0, drop=True)
+        #ds = ds.where(ds.y>0, drop=True)
 
     coords = {"y": ds.coords["y"], "x": ds.coords["x"]}
     dftrain = xr.Dataset(coords=coords, attrs=ds.attrs)
@@ -253,7 +253,7 @@ def plotPearsonCorr(
         transform=ccrs.SouthPolarStereo(),
         add_colorbar=colorbar,
         cmap=cmap,
-        vmin=-1,
+        vmin=vmin,
         vmax=1,
     )
     ax.coastlines("10m", color="black", linewidth = 1)

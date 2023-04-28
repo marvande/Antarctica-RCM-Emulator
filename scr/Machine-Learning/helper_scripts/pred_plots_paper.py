@@ -5,6 +5,8 @@ import seaborn as sns
 from numpy.core.fromnumeric import mean
 from sewar.full_ref import mse, rmse, psnr, uqi, ssim, ergas, scc, rase, sam, msssim, vifp
 from matplotlib import gridspec
+from matplotlib import colors
+
 import matplotlib.dates as mdates
 
 
@@ -48,7 +50,7 @@ def increment(i, evencol, evenrow):
 
 
 def plotTimeseries3Models(preds1, preds2, preds3, true_smb, train_set, target_dataset, points_RCM, region, 
-                                                    cmap = 'viridis', figsize = (15, 10), labels = None):
+                                                    cmap = 'viridis', figsize = (15, 10), labels = None, fontsize = 24):
         dsRCM = createLowerTarget(
                                 target_dataset, region=region, Nx=64, Ny=64, print_=False
                         )
@@ -73,6 +75,7 @@ def plotTimeseries3Models(preds1, preds2, preds3, true_smb, train_set, target_da
                             'as': [[1, 0], [1,2], [3, 0], [3,2]],
                             'ds': [[1, 1], [1,3], [3, 1], [3,3]]   
         }
+            
     
         for p in points_RCM:
                 dfPixels = getPixels(p, preds1, preds2, preds3, true_smb, train_set, labels, target_dataset)
@@ -117,9 +120,6 @@ def plotTimeseries3Models(preds1, preds2, preds3, true_smb, train_set, target_da
                 ax.grid(axis = 'y')   
                 ax.tick_params(axis='both', which='major', labelsize=16)
             
-            
-            
-            
                 # ------------------ ANNUAL SMB
                 yearlySMB = dfPixels.resample("y").sum() # yearly sum
                 yearlySMB.index = yearlySMB.index.strftime("%Y")
@@ -132,11 +132,11 @@ def plotTimeseries3Models(preds1, preds2, preds3, true_smb, train_set, target_da
                 ax.grid(axis = 'y')
             
                 if i == 1 :
-                        ax.set_ylim(bottom = -5, top = 30)
+                        ax.set_ylim(bottom = -15, top = 30)
                 if i == 2:
-                        ax.set_ylim([-40, 5])
+                        ax.set_ylim([-65, 5])
                 if i == 3:
-                        ax.set_ylim(bottom = -5, top = 40)
+                        ax.set_ylim(top = 40)
                 if i == 4:
                         ax.set_ylim(top = 15)
                     
@@ -549,6 +549,8 @@ def plotPredictions3Models(
         dims=("y", "x"), data=sampleGCM_[:, :, 0], attrs=dsGCM["SMB"].attrs
     )
     
+    divnorm=colors.TwoSlopeNorm(vcenter=0.)
+    
     # Random time plots:
     vmin, vmax = getMinMaxCB(sampleGCM_, sampletarget_, samplepred_,samplepredGCM_, samplepredGCM_tr)
     
@@ -578,6 +580,7 @@ def plotPredictions3Models(
         vmin=vmin,
         vmax=vmax,
         cmap=cmap,
+        norm = divnorm
     )
     ax2.coastlines("10m", color="black", linewidth=1)
     ax2.set_title(f"{time}: UPRCM", fontsize = fontsize_axes)
