@@ -16,7 +16,7 @@
   <p align="center">
     a comparison of two downscaling training frameworks
     <br />
-    <a href="https://github.com/marvande/Antarctica-RCM-Emulator/JAMES_Article.pdf"><strong>Explore the report »</strong></a>
+    <a href="https://github.com/marvande/Antarctica-RCM-Emulator/blob/main/JAMES_Article.pdf"><strong>Explore the report »</strong></a>
     <br />
   </p>
 </div>
