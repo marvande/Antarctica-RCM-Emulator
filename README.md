@@ -8,7 +8,7 @@
 <br />
 <div align="center">
   <a href="https://github.com/othneildrew/Best-README-Template">
-    <img src="images/EPFLlogo.png" alt="Logo" width="150" height="80">
+    <img src="images/eth_logo_kurz_pos.png" alt="Logo" width="150" height="80">
   </a>
 
   <h3 align="center">Deep Learning Regional Climate Model Emulators:</h3>
