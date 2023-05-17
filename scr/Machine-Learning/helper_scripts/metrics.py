@@ -257,7 +257,7 @@ def plotPearsonCorr(
         vmax=1,
     )
     ax.coastlines("10m", color="black", linewidth = 1)
-    ax.gridlines()
+    #ax.gridlines()
     ax.set_title("Correlation, mean:{:.2f}".format(mean))
     return im
 

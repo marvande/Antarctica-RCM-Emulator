@@ -245,6 +245,9 @@ def CompareMetrics3Models(
     region: str,
     figsize=(20, 15),
     cmap="viridis",
+    fontsize_axes=26,
+    clb_font_size = 18,
+    fontsize_ticks=20,
 ):
     fig = plt.figure(figsize=figsize)
     
@@ -262,7 +265,7 @@ def CompareMetrics3Models(
         cmap=cmap,
         colorbar=False,
     )
-    addMeanLegend(ax1, np.nanmean(PearsonCorr[0]), np.nanstd(PearsonCorr[0]), np.nanmin(PearsonCorr[0]), np.nanmax(PearsonCorr[0]))
+    addMeanLegend(ax1, np.nanmean(PearsonCorr[0]), np.nanstd(PearsonCorr[0]), np.nanmin(PearsonCorr[0]), np.nanmax(PearsonCorr[0]), fontsize = fontsize_ticks)
     i += 1
     
     ax2 = plt.subplot(M, 4, i, projection=ccrs.SouthPolarStereo())
@@ -275,7 +278,7 @@ def CompareMetrics3Models(
         cmap=cmap,
         colorbar=False,
     )
-    addMeanLegend(ax2, np.nanmean(PearsonCorr[1]), np.nanstd(PearsonCorr[1]), np.nanmin(PearsonCorr[1]), np.nanmax(PearsonCorr[1]))
+    addMeanLegend(ax2, np.nanmean(PearsonCorr[1]), np.nanstd(PearsonCorr[1]), np.nanmin(PearsonCorr[1]), np.nanmax(PearsonCorr[1]), fontsize = fontsize_ticks)
     
     i += 1
     ax3 = plt.subplot(M, 4, i, projection=ccrs.SouthPolarStereo())
@@ -288,11 +291,12 @@ def CompareMetrics3Models(
         cmap=cmap,
         colorbar=False,
     )
-    addMeanLegend(ax3, np.nanmean(PearsonCorr[2]), np.nanstd(PearsonCorr[2]), np.nanmin(PearsonCorr[2]), np.nanmax(PearsonCorr[2]))
+    addMeanLegend(ax3, np.nanmean(PearsonCorr[2]), np.nanstd(PearsonCorr[2]), np.nanmin(PearsonCorr[2]), np.nanmax(PearsonCorr[2]), fontsize = fontsize_ticks)
     
     for j, ax in enumerate([ax1, ax2, ax3]):
-        ax.set_title("{}: Correlation".format(labels[j]), fontsize=20)
+        ax.set_title("{}: Correlation".format(labels[j]), fontsize=fontsize_axes)
     clb = fig.colorbar(im, ax=[ax1, ax2, ax3], fraction=0.046, pad=0.04)
+    clb.ax.tick_params(labelsize=clb_font_size)
     clb.set_label("")
     i += 1
     
@@ -310,9 +314,10 @@ def CompareMetrics3Models(
             "markeredgecolor": "black",
         },
     )
+    ax4.tick_params(axis='both', which='major', labelsize=16)
     for bx in ax4.collections[::2]:
         bx.set_alpha(0.8)
-    ax4.set_title("Correlation", fontsize = 20)
+    ax4.set_title("Correlation", fontsize = fontsize_axes)
     i += 1
     
     # Wasserstein:
@@ -329,7 +334,7 @@ def CompareMetrics3Models(
         cmap=cmap,
         colorbar=False,
     )
-    addMeanLegend(ax5, np.nanmean(Wasserstein[0]), np.nanstd(Wasserstein[0]), np.nanmin(Wasserstein[0]), np.nanmax(Wasserstein[0]))
+    addMeanLegend(ax5, np.nanmean(Wasserstein[0]), np.nanstd(Wasserstein[0]), np.nanmin(Wasserstein[0]), np.nanmax(Wasserstein[0]), fontsize = fontsize_ticks)
     i += 1
     ax6 = plt.subplot(M, 4, i, projection=ccrs.SouthPolarStereo())
     plotWasserstein(
@@ -343,7 +348,7 @@ def CompareMetrics3Models(
         cmap=cmap,
         colorbar=False,
     )
-    addMeanLegend(ax6, np.nanmean(Wasserstein[1]), np.nanstd(Wasserstein[1]), np.nanmin(Wasserstein[1]), np.nanmax(Wasserstein[1]))
+    addMeanLegend(ax6, np.nanmean(Wasserstein[1]), np.nanstd(Wasserstein[1]), np.nanmin(Wasserstein[1]), np.nanmax(Wasserstein[1]), fontsize = fontsize_ticks)
     
     
     i += 1
@@ -359,13 +364,14 @@ def CompareMetrics3Models(
         cmap=cmap,
         colorbar=False,
     )
-    addMeanLegend(ax7, np.nanmean(Wasserstein[2]), np.nanstd(Wasserstein[2]), np.nanmin(Wasserstein[2]), np.nanmax(Wasserstein[2]))
+    addMeanLegend(ax7, np.nanmean(Wasserstein[2]), np.nanstd(Wasserstein[2]), np.nanmin(Wasserstein[2]), np.nanmax(Wasserstein[2]), fontsize = fontsize_ticks)
     
     
     for j, ax in enumerate([ax5, ax6, ax7]):
-        ax.set_title("{}: Wasserstein".format(labels[j]), fontsize=20)
+        ax.set_title("{}: Wasserstein".format(labels[j]), fontsize=fontsize_axes)
     l_f = LogFormatter(10, labelOnlyBase=False)
     clb = fig.colorbar(im, ax=[ax5, ax6, ax7], fraction=0.046, pad=0.04, format = l_f)
+    clb.ax.tick_params(labelsize=clb_font_size)
     clb.set_label("")
     
     # boxplot:
@@ -385,9 +391,10 @@ def CompareMetrics3Models(
     )
     for bx in ax8.collections[::2]:
         bx.set_alpha(0.8)
-    ax8.set_title("Wasserstein distance", fontsize = 20)
+    ax8.set_title("Wasserstein distance", fontsize = fontsize_axes)
     ax8.set_yscale("log")
     ax8.set_yticklabels([0,0, 0.1, 1, 10], minor=False)
+    ax8.tick_params(axis='both', which='major', labelsize=16)
     i += 1
     
     # RMSE:
@@ -404,7 +411,7 @@ def CompareMetrics3Models(
         cmap=cmap,
         colorbar=False,
     )
-    addMeanLegend(ax9, np.nanmean(RMSE[0]), np.nanstd(RMSE[0]), np.nanmin(RMSE[0]), np.nanmax(RMSE[0]))
+    addMeanLegend(ax9, np.nanmean(RMSE[0]), np.nanstd(RMSE[0]), np.nanmin(RMSE[0]), np.nanmax(RMSE[0]), fontsize = fontsize_ticks)
     
     i += 1
     ax10 = plt.subplot(M, 4, i, projection=ccrs.SouthPolarStereo())
@@ -419,7 +426,7 @@ def CompareMetrics3Models(
         cmap=cmap,
         colorbar=False,
     )
-    addMeanLegend(ax10, np.nanmean(RMSE[1]), np.nanstd(RMSE[1]), np.nanmin(RMSE[1]), np.nanmax(RMSE[1]))
+    addMeanLegend(ax10, np.nanmean(RMSE[1]), np.nanstd(RMSE[1]), np.nanmin(RMSE[1]), np.nanmax(RMSE[1]), fontsize = fontsize_ticks)
     i += 1
     ax11 = plt.subplot(M, 4, i, projection=ccrs.SouthPolarStereo())
     im = plotNRMSE(
@@ -433,12 +440,13 @@ def CompareMetrics3Models(
         cmap=cmap,
         colorbar=False,
     )
-    addMeanLegend(ax11, np.nanmean(RMSE[2]), np.nanstd(RMSE[2]), np.nanmin(RMSE[2]), np.nanmax(RMSE[2]))
+    addMeanLegend(ax11, np.nanmean(RMSE[2]), np.nanstd(RMSE[2]), np.nanmin(RMSE[2]), np.nanmax(RMSE[2]), fontsize = fontsize_ticks)
     
     for j, ax in enumerate([ax9, ax10, ax11]):
-        ax.set_title("{}: RMSE".format(labels[j]), fontsize=20)
+        ax.set_title("{}: RMSE".format(labels[j]), fontsize=fontsize_axes)
     l_f = LogFormatter(10, labelOnlyBase=False)
     clb = fig.colorbar(im, ax=[ax9, ax10, ax11], fraction=0.046, pad=0.04, format = l_f)
+    clb.ax.tick_params(labelsize=clb_font_size)
     clb.set_label("")
     i += 1
     
@@ -456,9 +464,10 @@ def CompareMetrics3Models(
             "markeredgecolor": "black",
         },
     )
-    ax12.set_title("RMSE", fontsize = 20)
+    ax12.set_title("RMSE", fontsize = fontsize_axes)
     ax12.set_yscale("log")
     ax12.set_yticklabels([0,0, 1, 10], minor=False)
+    ax12.tick_params(axis='both', which='major', labelsize=16)
     for bx in ax12.collections[::2]:
         bx.set_alpha(0.8)
         
